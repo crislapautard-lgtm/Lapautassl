@@ -1,31 +1,46 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-LaPautaSLAudioProcessor::LaPautaSLAudioProcessor() : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true).withOutput("Output", juce::AudioChannelSet::stereo(), true)), apvts(*this, nullptr, "Params", createParams()) { }
+LaPautaSLAudioProcessor::LaPautaSLAudioProcessor()
+: AudioProcessor (BusesProperties().withInput  ("Input",  juce::AudioChannelSet::stereo())
+                                   .withOutput ("Output", juce::AudioChannelSet::stereo())),
+  apvts (*this, nullptr, "Params", {
+      std::make_unique<juce::AudioParameterFloat>("threshold", "Threshold", -24.0f, 0.0f, -6.0f),
+      std::make_unique<juce::AudioParameterFloat>("release", "Release", 10.0f, 500.0f, 100.0f)
+  })
+{
+}
 
 LaPautaSLAudioProcessor::~LaPautaSLAudioProcessor() {}
 
-juce::AudioProcessorValueTreeState::ParameterLayout LaPautaSLAudioProcessor::createParams() {
-    juce::AudioProcessorValueTreeState::ParameterLayout layout;
-    layout.add(std::make_unique<juce::AudioParameterFloat>("COMP", "Compresion", 0.0f, 100.0f, 50.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>("MAKEUP", "Makeup", -12.0f, 12.0f, 0.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>("SHINE", "Brillo", 0.0f, 100.0f, 25.0f));
-    return layout;
+void LaPautaSLAudioProcessor::prepareToPlay (double, int) {}
+void LaPautaSLAudioProcessor::releaseResources() {}
+
+void LaPautaSLAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+{
+    juce::ScopedNoDenormals noDenormals;
+    auto threshold = apvts.getRawParameterValue("threshold")->load();
+    float threshLin = juce::Decibels::decibelsToGain(threshold);
+
+    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+    {
+        auto* data = buffer.getWritePointer(ch);
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+        {
+            float x = data[i];
+            if (std::abs(x) > threshLin)
+                x = (x > 0 ? threshLin : -threshLin);
+            data[i] = x;
+        }
+    }
 }
 
-void LaPautaSLAudioProcessor::prepareToPlay(double sr, int) { sampleRate = sr; envelope = 0.0f; }
-void LaPautaSLAudioProcessor::releaseResources() {}
-bool LaPautaSLAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const { return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo() || layouts.getMainOutputChannelSet() == juce::AudioChannelSet::mono(); }
+juce::AudioProcessorEditor* LaPautaSLAudioProcessor::createEditor()
+{
+    return new juce::GenericAudioProcessorEditor (*this);
+}
 
-void LaPautaSLAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
-    juce::ScopedNoDenormals noDenormals;
-    auto comp = apvts.getRawParameterValue("COMP")->load() / 100.0f;
-    auto makeup = juce::Decibels::decibelsToGain(apvts.getRawParameterValue("MAKEUP")->load());
-    auto shine = apvts.getRawParameterValue("SHINE")->load() / 100.0f;
-    for (int ch = 0; ch < buffer.getNumChannels(); ++ch) {
-        auto* data = buffer.getWritePointer(ch);
-        for (int i = 0; i < buffer.getNumSamples(); ++i) {
-            float in = data[i];
-            float envIn = std::abs(in);
-            float attack = 0.01f; float release = 0.15f;
-            if (envIn > envelope) envelope = attack * (envelope - envIn) + envIn
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+{
+    return new LaPautaSLAudioProcessor();
+}
