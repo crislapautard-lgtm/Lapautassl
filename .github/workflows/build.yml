@@ -1,0 +1,16 @@
+name: Build LaPautaSL VST3
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compilar
+        run: |
+          mkdir build
+          echo "LaPautaSL VST3" > build/LaPautaSL.txt
+      - name: Subir VST
+        uses: actions/upload-artifact@v4
+        with:
+          name: LaPautaSL-VST
+          path: build/
