@@ -1,12 +1,13 @@
 #pragma once
 #include <JuceHeader.h>
-class LaPautaSLAudioProcessor : public juce::AudioProcessor
-{
+
+class LaPautaSLAudioProcessor : public juce::AudioProcessor {
 public:
     LaPautaSLAudioProcessor();
     ~LaPautaSLAudioProcessor() override;
-    void prepareToPlay(double, int) override;
-    void releaseResources() override {}
+    void prepareToPlay(double sampleRate, int samplesPerBlock) override;
+    void releaseResources() override;
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
@@ -20,13 +21,12 @@ public:
     void setCurrentProgram(int) override {}
     const juce::String getProgramName(int) override { return {}; }
     void changeProgramName(int, const juce::String&) override {}
-    void getStateInformation(juce::MemoryBlock&) override {}
-    void setStateInformation(const void*, int) override {}
+    void getStateInformation(juce::MemoryBlock& destData) override;
+    void setStateInformation(const void* data, int sizeInBytes) override;
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParams();
     juce::AudioProcessorValueTreeState apvts;
 private:
-    juce::dsp::Compressor<float> compressor;
-    juce::dsp::Gain<float> makeupGain;
-    juce::dsp::IIR::Filter<float> shineFilter;
-    juce::dsp::ProcessSpec spec;
+    float envelope = 0.0f;
+    double sampleRate = 44100.0;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LaPautaSLAudioProcessor)
 };
