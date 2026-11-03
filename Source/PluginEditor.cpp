@@ -1,77 +1,94 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-LaPautaSLAudioProcessorEditor::LaPautaSLAudioProcessorEditor(LaPautaSLAudioProcessor& p)
-    : AudioProcessorEditor(&p), audioProcessor(p)
+LaPautaSLAudioProcessorEditor::LaPautaSLAudioProcessorEditor (LaPautaSLAudioProcessor& p)
+    : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    setSize(600, 400);
-    background = juce::ImageCache::getFromMemory(BinaryData::background_png, BinaryData::background_pngSize);
+    setSize (600, 380);
 
-    auto setupSlider = [&](juce::Slider& s, juce::Label& l, juce::String text) {
-        s.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-        s.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-        addAndMakeVisible(s);
-        l.setText(text, juce::dontSendNotification);
-        l.setJustificationType(juce::Justification::centred);
-        l.setColour(juce::Label::textColourId, juce::Colours::white);
-        addAndMakeVisible(l);
+    presetLabel.setText ("Preset", juce::dontSendNotification);
+    addAndMakeVisible (presetLabel);
+    addAndMakeVisible (presetBox);
+    presetBox.addItem ("Limpio", 1);
+    presetBox.addItem ("Vocal Presente", 2);
+    presetBox.addItem ("Dembow Fuerte", 3);
+    presetBox.addItem ("Radio", 4);
+    presetBox.setSelectedId (1);
+    presetBox.onChange = [this]
+    {
+        auto id = presetBox.getSelectedId();
+        auto& apvts = audioProcessor.apvts;
+        if (id == 1) {
+            apvts.getParameter ("threshold")->setValueNotifyingHost (0.5f);
+            apvts.getParameter ("ratio")->setValueNotifyingHost (0.2f);
+            apvts.getParameter ("mix")->setValueNotifyingHost (0.5f);
+        } else if (id == 2) {
+            apvts.getParameter ("threshold")->setValueNotifyingHost (0.35f);
+            apvts.getParameter ("ratio")->setValueNotifyingHost (0.45f);
+            apvts.getParameter ("mix")->setValueNotifyingHost (0.7f);
+        } else if (id == 3) {
+            apvts.getParameter ("threshold")->setValueNotifyingHost (0.25f);
+            apvts.getParameter ("ratio")->setValueNotifyingHost (0.65f);
+            apvts.getParameter ("mix")->setValueNotifyingHost (0.8f);
+        } else if (id == 4) {
+            apvts.getParameter ("threshold")->setValueNotifyingHost (0.4f);
+            apvts.getParameter ("ratio")->setValueNotifyingHost (0.55f);
+            apvts.getParameter ("mix")->setValueNotifyingHost (0.6f);
+        }
     };
 
-    setupSlider(thresholdSlider, thresholdLabel, "Threshold");
-    setupSlider(ratioSlider, ratioLabel, "Ratio");
-    setupSlider(attackSlider, attackLabel, "Attack");
-    setupSlider(releaseSlider, releaseLabel, "Release");
-    setupSlider(makeupSlider, makeupLabel, "Makeup");
-    setupSlider(mixSlider, mixLabel, "Mix");
-
-    presetLabel.setText("PRESET", juce::dontSendNotification);
-    presetLabel.setJustificationType(juce::Justification::centred);
-    presetLabel.setColour(juce::Label::textColourId, juce::Colours::yellow);
-    addAndMakeVisible(presetLabel);
-    for (int i = 0; i < 8; ++i)
-        presetBox.addItem(audioProcessor.getProgramName(i), i + 1);
-    presetBox.setSelectedId(1, juce::dontSendNotification);
-    presetBox.onChange = [this] {
-        int idx = presetBox.getSelectedId() - 1;
-        if (idx >= 0) audioProcessor.applyPreset(idx);
+    auto setupSlider = [this] (juce::Slider& s, juce::Label& l, juce::String text)
+    {
+        s.setSliderStyle (juce::Slider::RotaryVerticalDrag);
+        s.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 70, 20);
+        addAndMakeVisible (s);
+        l.setText (text, juce::dontSendNotification);
+        l.setJustificationType (juce::Justification::centred);
+        addAndMakeVisible (l);
     };
-    addAndMakeVisible(presetBox);
+
+    setupSlider (thresholdSlider, thresholdLabel, "Threshold");
+    setupSlider (ratioSlider, ratioLabel, "Ratio");
+    setupSlider (attackSlider, attackLabel, "Attack");
+    setupSlider (releaseSlider, releaseLabel, "Release");
+    setupSlider (makeupSlider, makeupLabel, "Makeup");
+    setupSlider (mixSlider, mixLabel, "Mix");
 
     auto& apvts = audioProcessor.apvts;
-    thresholdAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(apvts, "threshold", thresholdSlider);
-    ratioAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(apvts, "ratio", ratioSlider);
-    attackAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(apvts, "attack", attackSlider);
-    releaseAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(apvts, "release", releaseSlider);
-    makeupAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(apvts, "makeup", makeupSlider);
-    mixAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(apvts, "mix", mixSlider);
+    thresholdAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "threshold", thresholdSlider);
+    ratioAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "ratio", ratioSlider);
+    attackAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "attack", attackSlider);
+    releaseAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "release", releaseSlider);
+    makeupAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "makeup", makeupSlider);
+    mixAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "mix", mixSlider);
 }
 
-LaPautaSLAudioProcessorEditor::~LaPautaSLAudioProcessorEditor() {}
-
-void LaPautaSLAudioProcessorEditor::paint(juce::Graphics& g)
+LaPautaSLAudioProcessorEditor::~LaPautaSLAudioProcessorEditor()
 {
-    if (background.isValid())
-        g.drawImage(background, getLocalBounds().toFloat());
-    else
-        g.fillAll(juce::Colours::darkgrey);
+}
+
+void LaPautaSLAudioProcessorEditor::paint (juce::Graphics& g)
+{
+    g.fillAll (juce::Colour (0xff111111));
+    g.setColour (juce::Colours::white);
+    g.setFont (22.0f);
+    g.drawText ("LA PAUTA SL", getLocalBounds().removeFromTop (40), juce::Justification::centred, true);
 }
 
 void LaPautaSLAudioProcessorEditor::resized()
 {
-    presetLabel.setBounds(20, 15, 100, 20);
-    presetBox.setBounds(130, 15, 250, 25);
+    auto area = getLocalBounds();
+    area.removeFromTop (40);
+    auto top = area.removeFromTop (40);
+    presetLabel.setBounds (top.removeFromLeft (80));
+    presetBox.setBounds (top.removeFromLeft (200));
 
-    int y = 120;
-    int w = 80, h = 90, gap = 10, x = 20;
-    auto place = [&](juce::Slider& s, juce::Label& l) {
-        s.setBounds(x, y, w, h);
-        l.setBounds(x, y + h, w, 20);
-        x += w + gap;
-    };
-    place(thresholdSlider, thresholdLabel);
-    place(ratioSlider, ratioLabel);
-    place(attackSlider, attackLabel);
-    place(releaseSlider, releaseLabel);
-    place(makeupSlider, makeupLabel);
-    place(mixSlider, mixLabel);
+    auto row = area.removeFromTop (280);
+    auto w = row.getWidth() / 6;
+    thresholdSlider.setBounds (row.removeFromLeft (w).reduced (5));
+    ratioSlider.setBounds (row.removeFromLeft (w).reduced (5));
+    attackSlider.setBounds (row.removeFromLeft (w).reduced (5));
+    releaseSlider.setBounds (row.removeFromLeft (w).reduced (5));
+    makeupSlider.setBounds (row.removeFromLeft (w).reduced (5));
+    mixSlider.setBounds (row.removeFromLeft (w).reduced (5));
 }
