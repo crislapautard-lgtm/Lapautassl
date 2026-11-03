@@ -66,7 +66,6 @@ void LaPautaSLAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     auto totalNumInputChannels = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i) buffer.clear (i, 0, buffer.getNumSamples());
-
     float threshold = apvts.getRawParameterValue ("THRESHOLD")->load();
     float ratio = apvts.getRawParameterValue ("RATIO")->load();
     float attack = apvts.getRawParameterValue ("ATTACK")->load();
@@ -79,32 +78,25 @@ void LaPautaSLAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     float link = apvts.getRawParameterValue ("LINK")->load() / 100.0f;
     float air = apvts.getRawParameterValue ("AIR")->load() / 100.0f;
     int mode = (int) apvts.getRawParameterValue ("MODE")->load();
-
     if (mode == 1) { attack *= 0.5f; ratio *= 1.3f; punch = juce::jmin(1.0f, punch + 0.2f); }
     if (mode == 2) { attack *= 1.8f; release *= 1.5f; saturation *= 0.7f; }
-
     float peak = 0.0f;
     for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
         peak = juce::jmax (peak, buffer.getMagnitude (ch, 0, buffer.getNumSamples()));
     inputLevel.store (juce::Decibels::gainToDecibels (peak + 0.00001f));
-
     compressor.setThreshold (threshold);
     compressor.setRatio (ratio);
     compressor.setAttack (attack);
     compressor.setRelease (release);
     makeupGain.setGainDecibels (makeup);
-
     juce::AudioBuffer<float> dryBuffer;
     dryBuffer.makeCopyOf (buffer);
-
     juce::dsp::AudioBlock<float> block (buffer);
     juce::dsp::ProcessContextReplacing<float> context (block);
     compressor.process (context);
-
     float gr = threshold - inputLevel.load();
     if (gr > 0) gr = 0;
     gainReduction.store (-gr * (1.0f - 1.0f / ratio));
-
     if (saturation > 0.01f)
     {
         for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
@@ -139,9 +131,7 @@ void LaPautaSLAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
                 d[s] += (d[s] - d[s-1]) * air * 0.3f;
         }
     }
-
     makeupGain.process (context);
-
     float finalMix = juce::jmax (mix, parallel);
     for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
     {
@@ -181,3 +171,8 @@ juce::AudioProcessorEditor* LaPautaSLAudioProcessor::createEditor() { return new
 void LaPautaSLAudioProcessor::getStateInformation (juce::MemoryBlock& destData) { auto state = apvts.copyState(); std::unique_ptr<juce::XmlElement> xml (state.createXml()); copyXmlToBinary (*xml, destData); }
 void LaPautaSLAudioProcessor::setStateInformation (const void* data, int sizeInBytes) { std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes)); if (xmlState.get() != nullptr) if (xmlState->hasTagName (apvts.state.getType())) apvts.replaceState (juce::ValueTree::fromXml (*xmlState)); }
 void LaPautaSLAudioProcessor::releaseResources() {}
+
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+{
+    return new LaPautaSLAudioProcessor();
+}
