@@ -106,7 +106,7 @@ void LaPautaSLAudioProcessorEditor::paint (juce::Graphics& g)
         g.drawText(t, (float)x, 115, 72, 18, juce::Justification::centred);
         float h = juce::jmap(juce::jlimit(-30.0f, 3.0f, db), -30.0f, 3.0f, 0.0f, 78.0f);
         auto bar = juce::Rectangle<float>((float)x+10, 240 - h, 52, h);
-        juce::ColourGradient grad(juce::Colour(0xff00ff00), bar.getBottom(), juce::Colour(0xffff0000), bar.getY(), false);
+        juce::ColourGradient grad = juce::ColourGradient(juce::Colour(0xff00ff00), bar.getTopLeft(), juce::Colour(0xff00e5ff), bar.getBottomLeft(), false);
         g.setGradientFill(grad);
         g.fillRoundedRectangle(bar, 3);
         g.setColour(juce::Colour(0xff00e5ff));
