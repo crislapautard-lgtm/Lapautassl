@@ -1,4 +1,5 @@
-// LaPautaSL - V2 ACTUALIZADO - Nov 2026
+// trigger 37
+//LaPautaSL - V2 ACTUALIZADO - Nov 2026
 // Ya corregido: Ratio Float, DrawImage, Presets nuevos
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
