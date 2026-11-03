@@ -85,3 +85,7 @@ void LaPautaSLAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     outputLevel.store(outputLevel.load() * 0.7f + outDb * 0.3f);
     gainReduction.store(envelope);
 }
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+{
+    return new LaPautaSLAudioProcessor();
+}
