@@ -1,143 +1,87 @@
-// trigger 37
-//LaPautaSL - V2 ACTUALIZADO - Nov 2026
-// Ya corregido: Ratio Float, DrawImage, Presets nuevos
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-
 LaPautaSLAudioProcessor::LaPautaSLAudioProcessor()
-    : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
-                                      .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts(*this, nullptr, "Parameters", createParameterLayout())
-{
-}
-
+    : AudioProcessor (BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true).withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+      apvts (*this, nullptr, "Parameters", createParameterLayout()) {}
 LaPautaSLAudioProcessor::~LaPautaSLAudioProcessor() {}
-
 juce::AudioProcessorValueTreeState::ParameterLayout LaPautaSLAudioProcessor::createParameterLayout()
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
-    // NUEVO: Rangos mas musicales, estilo SSL
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "threshold", "Threshold",
-        juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f), -18.0f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "ratio", "Ratio",
-        juce::NormalisableRange<float>(1.0f, 10.0f, 0.1f), 4.0f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "attack", "Attack",
-        juce::NormalisableRange<float>(0.1f, 100.0f, 0.1f, 0.5f), 10.0f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "release", "Release",
-        juce::NormalisableRange<float>(10.0f, 1000.0f, 1.0f, 0.5f), 150.0f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "makeup", "Makeup",
-        juce::NormalisableRange<float>(0.0f, 24.0f, 0.1f), 0.0f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "mix", "Mix",
-        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 100.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("threshold", "Threshold", -30.0f, 0.0f, -18.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("ratio", "Ratio", 1.0f, 20.0f, 4.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("attack", "Attack", 0.1f, 100.0f, 10.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("release", "Release", 50.0f, 3000.0f, 300.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("makeup", "Makeup", -12.0f, 24.0f, 3.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("mix", "Mix", 0.0f, 100.0f, 70.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("sidechain", "Sidechain HPF", 20.0f, 1000.0f, 120.0f));
+    params.push_back (std::make_unique<juce::AudioParameterBool> ("sidechainOn", "Sidechain On", true));
     return { params.begin(), params.end() };
 }
-
-void LaPautaSLAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
-{
-    juce::dsp::ProcessSpec spec{ sampleRate, (juce::uint32)samplesPerBlock, 2 };
-    compressor.prepare(spec);
-    makeupGain.prepare(spec);
-    dryWet.prepare(spec);
-    dryWet.setWetMixProportion(1.0f);
-}
-
+void LaPautaSLAudioProcessor::prepareToPlay (double sr, int) { lastSampleRate = sr; envelope = 0.0f; hpfL.reset(); hpfR.reset(); }
 void LaPautaSLAudioProcessor::releaseResources() {}
-
-void LaPautaSLAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+bool LaPautaSLAudioProcessor::hasEditor() const { return true; }
+juce::AudioProcessorEditor* LaPautaSLAudioProcessor::createEditor() { return new LaPautaSLAudioProcessorEditor (*this); }
+const juce::String LaPautaSLAudioProcessor::getName() const { return "LaPautaSL"; }
+bool LaPautaSLAudioProcessor::acceptsMidi() const { return false; }
+bool LaPautaSLAudioProcessor::producesMidi() const { return false; }
+bool LaPautaSLAudioProcessor::isMidiEffect() const { return false; }
+double LaPautaSLAudioProcessor::getTailLengthSeconds() const { return 0.0; }
+int LaPautaSLAudioProcessor::getNumPrograms() { return 1; }
+int LaPautaSLAudioProcessor::getCurrentProgram() { return 0; }
+void LaPautaSLAudioProcessor::setCurrentProgram (int) {}
+const juce::String LaPautaSLAudioProcessor::getProgramName (int) { return {}; }
+void LaPautaSLAudioProcessor::changeProgramName (int, const juce::String&) {}
+void LaPautaSLAudioProcessor::getStateInformation (juce::MemoryBlock& d) { auto s = apvts.copyState(); std::unique_ptr<juce::XmlElement> x (s.createXml()); copyXmlToBinary (*x, d); }
+void LaPautaSLAudioProcessor::setStateInformation (const void* data, int size) { std::unique_ptr<juce::XmlElement> x (getXmlFromBinary (data, size)); if (x) apvts.replaceState (juce::ValueTree::fromXml (*x)); }
+void LaPautaSLAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear(i, 0, buffer.getNumSamples());
-
-    float th = *apvts.getRawParameterValue("threshold");
-    float ratioVal = *apvts.getRawParameterValue("ratio");
-    float at = *apvts.getRawParameterValue("attack");
-    float rel = *apvts.getRawParameterValue("release");
-    float mk = *apvts.getRawParameterValue("makeup");
-    float mx = *apvts.getRawParameterValue("mix");
-
-    compressor.setThreshold(th);
-    compressor.setRatio(ratioVal);
-    compressor.setAttack(at);
-    compressor.setRelease(rel);
-    makeupGain.setGainDecibels(mk);
-    dryWet.setWetMixProportion(mx / 100.0f);
-
-    juce::dsp::AudioBlock<float> block(buffer);
-    dryWet.pushDrySamples(block);
-    compressor.process(juce::dsp::ProcessContextReplacing<float>(block));
-    makeupGain.process(juce::dsp::ProcessContextReplacing<float>(block));
-    dryWet.mixWetSamples(block);
-}
-
-juce::AudioProcessorEditor* LaPautaSLAudioProcessor::createEditor()
-{
-    return new LaPautaSLAudioProcessorEditor(*this);
-}
-
-// PRESETS NUEVOS ACTUALIZADOS
-struct Preset { const char* name; float t; float r; float a; float rel; float m; float mix; };
-static const Preset presets[8] = {
-    {"1. Vocal Suave",    -18.0f, 2.0f, 10.0f, 150.0f, 2.0f, 100.0f},
-    {"2. Vocal Fuerte",   -12.0f, 3.0f,  5.0f, 100.0f, 3.0f, 100.0f},
-    {"3. Bateria Pegada", -10.0f, 4.0f,  2.0f,  80.0f, 4.0f, 100.0f},
-    {"4. Bajo Controlado",-14.0f, 2.5f, 15.0f, 200.0f, 2.0f, 100.0f},
-    {"5. Master Suave",   -6.0f,  1.5f, 20.0f, 300.0f, 1.0f, 100.0f},
-    {"6. Master Fuerte",  -10.0f, 2.0f, 10.0f, 200.0f, 2.0f, 100.0f},
-    {"7. Guitarra",       -16.0f, 2.0f,  8.0f, 180.0f, 2.0f, 100.0f},
-    {"8. Paralelo NY",    -20.0f, 4.0f,  5.0f, 120.0f, 6.0f,  50.0f}
-};
-
-void LaPautaSLAudioProcessor::applyPreset(int index)
-{
-    if (index < 0 || index >= 8) return;
-    currentPreset = index;
-    auto p = presets[index];
-    auto* th = apvts.getParameter("threshold");
-    auto* ra = apvts.getParameter("ratio");
-    auto* at = apvts.getParameter("attack");
-    auto* rl = apvts.getParameter("release");
-    auto* mk = apvts.getParameter("makeup");
-    auto* mx = apvts.getParameter("mix");
-    if (th) th->setValueNotifyingHost(th->convertTo0to1(p.t));
-    if (ra) ra->setValueNotifyingHost(ra->convertTo0to1(p.r));
-    if (at) at->setValueNotifyingHost(at->convertTo0to1(p.a));
-    if (rl) rl->setValueNotifyingHost(rl->convertTo0to1(p.rel));
-    if (mk) mk->setValueNotifyingHost(mk->convertTo0to1(p.m));
-    if (mx) mx->setValueNotifyingHost(mx->convertTo0to1(p.mix));
-}
-
-void LaPautaSLAudioProcessor::setCurrentProgram(int index) { applyPreset(index); }
-
-const juce::String LaPautaSLAudioProcessor::getProgramName(int index)
-{
-    if (index >= 0 && index < 8) return presets[index].name;
-    return "Default";
-}
-
-void LaPautaSLAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
-{
-    auto state = apvts.copyState();
-    std::unique_ptr<juce::XmlElement> xml(state.createXml());
-    copyXmlToBinary(*xml, destData);
-}
-
-void LaPautaSLAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
-{
-    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
-    if (xmlState.get() != nullptr && xmlState->hasTagName(apvts.state.getType()))
-        apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
-}
-
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
-{
-    return new LaPautaSLAudioProcessor();
+    auto inCh = getTotalNumInputChannels();
+    auto outCh = getTotalNumOutputChannels();
+    for (auto i = inCh; i < outCh; ++i) buffer.clear (i, 0, buffer.getNumSamples());
+    float thresh = apvts.getRawParameterValue("threshold")->load();
+    float ratio = apvts.getRawParameterValue("ratio")->load();
+    float attack = apvts.getRawParameterValue("attack")->load();
+    float release = apvts.getRawParameterValue("release")->load();
+    float makeup = apvts.getRawParameterValue("makeup")->load();
+    float mix = apvts.getRawParameterValue("mix")->load() / 100.0f;
+    float hpfFreq = apvts.getRawParameterValue("sidechain")->load();
+    bool hpfOn = apvts.getRawParameterValue("sidechainOn")->load() > 0.5f;
+    float aCoeff = std::exp(-1.0f / (attack * 0.001f * (float)lastSampleRate * 0.3f + 1.0f));
+    float rCoeff = std::exp(-1.0f / (release * 0.001f * (float)lastSampleRate * 0.3f + 1.0f));
+    float makeupGain = juce::Decibels::decibelsToGain(makeup);
+    // Actualizar HPF solo si esta ON
+    if (hpfOn) {
+        auto coeffs = juce::dsp::IIR::Coefficients<float>::makeHighPass(lastSampleRate, hpfFreq, 0.7f);
+        *hpfL.coefficients = *coeffs; *hpfR.coefficients = *coeffs;
+        hpfL.prepare({lastSampleRate, (juce::uint32)buffer.getNumSamples(), 1});
+        hpfR.prepare({lastSampleRate, (juce::uint32)buffer.getNumSamples(), 1});
+    }
+    float maxIn = 0.0f, maxOut = 0.0f;
+    for (int ch = 0; ch < inCh; ++ch)
+    {
+        auto* data = buffer.getWritePointer(ch);
+        for (int s = 0; s < buffer.getNumSamples(); ++s)
+        {
+            float in = data[s];
+            maxIn = juce::jmax(maxIn, std::abs(in));
+            float detector = in;
+            if (hpfOn) detector = (ch == 0 ? hpfL.processSample(in) : hpfR.processSample(in));
+            float levelDb = juce::Decibels::gainToDecibels(std::abs(detector) + 0.00001f);
+            float target = 0.0f;
+            if (levelDb > thresh) target = (levelDb - thresh) * (1.0f - 1.0f / ratio);
+            float coeff = target > envelope ? aCoeff : rCoeff;
+            envelope = coeff * envelope + (1.0f - coeff) * target;
+            float comp = juce::Decibels::decibelsToGain(-envelope);
+            float wet = in * comp * makeupGain;
+            data[s] = in * (1.0f - mix) + wet * mix;
+            maxOut = juce::jmax(maxOut, std::abs(data[s]));
+        }
+    }
+    float inDb = juce::Decibels::gainToDecibels(maxIn + 0.00001f);
+    float outDb = juce::Decibels::gainToDecibels(maxOut + 0.00001f);
+    // Suavizado para que no brinque feo
+    inputLevel.store(inputLevel.load() * 0.7f + inDb * 0.3f);
+    outputLevel.store(outputLevel.load() * 0.7f + outDb * 0.3f);
+    gainReduction.store(envelope);
 }
