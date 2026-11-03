@@ -47,3 +47,8 @@ void LaPautaSLAudioProcessorEditor::paint (juce::Graphics& g)
 void LaPautaSLAudioProcessorEditor::resized()
 {
 }
+void LaPautaSLAudioProcessorEditor::timerCallback()
+{
+    // Esto hace que los meters se muevan
+    repaint();
+}
