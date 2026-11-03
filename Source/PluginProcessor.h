@@ -19,7 +19,7 @@ public:
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 0.0; }
 
-    // ===== PRESETS SSL =====
+    // PRESETS
     int getNumPrograms() override { return 8; }
     int getCurrentProgram() override { return currentPreset; }
     void setCurrentProgram(int index) override;
@@ -33,6 +33,9 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+    // Para que el Editor no de error
+    juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
 
 private:
     juce::dsp::Compressor<float> compressor;
