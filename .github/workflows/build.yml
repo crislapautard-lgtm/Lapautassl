@@ -5,12 +5,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Compilar
-        run: |
-          mkdir build
-          echo "LaPautaSL VST3" > build/LaPautaSL.txt
+      - name: Configurar CMake
+        run: cmake -B build
+      - name: Compilar VST3
+        run: cmake --build build --config Release
       - name: Subir VST
         uses: actions/upload-artifact@v4
         with:
           name: LaPautaSL-VST
-          path: build/
+          path: build/**/*.vst3
