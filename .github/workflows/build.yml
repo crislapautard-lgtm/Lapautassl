@@ -9,6 +9,15 @@ jobs:
         run: cmake -B build
       - name: Compilar VST3
         run: cmake --build build --config Release
+      - name: Instalar Inno Setup
+        run: choco install innosetup -y
+      - name: Crear Instalador
+        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss'
+      - name: Subir Instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: LaPautaSL-Installer
+          path: installer-output/*.exe
       - name: Subir VST
         uses: actions/upload-artifact@v4
         with:
