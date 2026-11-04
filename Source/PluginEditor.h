@@ -1,59 +1,56 @@
 
 #pragma once
 
-#include <JuceHeader.h>
 #include "PluginProcessor.h"
 
-class LaPautaSLAudioProcessorEditor
-    : public juce::AudioProcessorEditor,
-      private juce::Timer
+class LaPautaLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
-    explicit LaPautaSLAudioProcessorEditor(LaPautaSLAudioProcessor& processor);
-    ~LaPautaSLAudioProcessorEditor() override;
+    LaPautaLookAndFeel();
 
-    void paint(juce::Graphics& g) override;
+    void drawRotarySlider(
+        juce::Graphics& g,
+        int x, int y, int width, int height,
+        float sliderPos,
+        float rotaryStartAngle,
+        float rotaryEndAngle,
+        juce::Slider& slider) override;
+};
+
+class LaPautaSLEditor : public juce::AudioProcessorEditor,
+                        private juce::Timer
+{
+public:
+    explicit LaPautaSLEditor(LaPautaSLAudioProcessor&);
+    ~LaPautaSLEditor() override;
+
+    void paint(juce::Graphics&) override;
     void resized() override;
 
 private:
-    LaPautaSLAudioProcessor& audioProcessor;
-
-    class MetalLookAndFeel : public juce::LookAndFeel_V4
-    {
-    public:
-        void drawRotarySlider(
-            juce::Graphics& g,
-            int x, int y, int width, int height,
-            float sliderPos,
-            float rotaryStartAngle,
-            float rotaryEndAngle,
-            juce::Slider& slider) override;
-    };
-
-    MetalLookAndFeel metalLook;
-
-    juce::Slider thresholdSlider, ratioSlider, attackSlider,
-                 makeupSlider, mixSlider;
-
-    juce::Label thresholdValue, ratioValue, attackValue,
-                makeupValue, mixValue;
-
-    juce::Label thresholdName, ratioName, attackName,
-                makeupName, mixName;
-
-    using SliderAttachment =
-        juce::AudioProcessorValueTreeState::SliderAttachment;
-
-    std::unique_ptr<SliderAttachment> thresholdAttachment;
-    std::unique_ptr<SliderAttachment> ratioAttachment;
-    std::unique_ptr<SliderAttachment> attackAttachment;
-    std::unique_ptr<SliderAttachment> makeupAttachment;
-    std::unique_ptr<SliderAttachment> mixAttachment;
-
-    void setupSlider(juce::Slider& slider);
-    void setupLabel(juce::Label& label, const juce::String& text);
     void timerCallback() override;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
-        LaPautaSLAudioProcessorEditor)
+    void setupKnob(juce::Slider&, const juce::String&);
+    void drawScrew(juce::Graphics&, float, float);
+    void drawMeter(juce::Graphics&, juce::Rectangle<float>);
+
+    LaPautaSLAudioProcessor& audioProcessor;
+
+    LaPautaLookAndFeel lookAndFeel;
+
+    juce::Slider thresholdSlider;
+    juce::Slider ratioSlider;
+    juce::Slider attackSlider;
+    juce::Slider makeupSlider;
+    juce::Slider mixSlider;
+
+    juce::AudioProcessorValueTreeState::SliderAttachment
+        thresholdAttachment, ratioAttachment, attackAttachment,
+        makeupAttachment, mixAttachment;
+
+    juce::Rectangle<int> knobAreas[5];
+
+    float displayedGR = 0.0f;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LaPautaSLEditor)
 };
