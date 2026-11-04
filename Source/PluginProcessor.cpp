@@ -2,70 +2,236 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-LaPautaSLAudioProcessor::LaPautaSLAudioProcessor()
+LaPautaSLCompresorAudioProcessor::LaPautaSLCompresorAudioProcessor()
     : AudioProcessor(
         BusesProperties()
             .withInput("Input", juce::AudioChannelSet::stereo(), true)
-            .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      parameters(*this, nullptr, "PARAMETERS", createParameterLayout())
+            .withOutput("Output", juce::AudioChannelSet::stereo(), true)
+    ),
+    parameters(
+        *this,
+        nullptr,
+        "PARAMETERS",
+        createParameterLayout()
+    )
+{
+}
+
+LaPautaSLCompresorAudioProcessor::~LaPautaSLCompresorAudioProcessor()
 {
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout
-LaPautaSLAudioProcessor::createParameterLayout()
+LaPautaSLCompresorAudioProcessor::createParameterLayout()
 {
-    using Float = juce::AudioParameterFloat;
-
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-    layout.add(std::make_unique<Float>(
-        "THRESHOLD", "Threshold",
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "THRESHOLD",
+        "Threshold",
         juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f),
-        -12.0f));
+        -18.0f
+    ));
 
-    layout.add(std::make_unique<Float>(
-        "RATIO", "Ratio",
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "RATIO",
+        "Ratio",
         juce::NormalisableRange<float>(1.0f, 20.0f, 0.1f),
-        4.0f));
+        4.0f
+    ));
 
-    layout.add(std::make_unique<Float>(
-        "ATTACK", "Attack",
-        juce::NormalisableRange<float>(0.1f, 100.0f, 0.1f),
-        10.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "RELEASE",
+        "Release",
+        juce::NormalisableRange<float>(10.0f, 1000.0f, 1.0f),
+        120.0f
+    ));
 
-    layout.add(std::make_unique<Float>(
-        "MAKEUP", "Makeup",
-        juce::NormalisableRange<float>(0.0f, 24.0f, 0.1f),
-        3.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "MAKEUP",
+        "Make Up",
+        juce::NormalisableRange<float>(-12.0f, 24.0f, 0.1f),
+        0.0f
+    ));
 
-    layout.add(std::make_unique<Float>(
-        "MIX", "Mix",
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "MIX",
+        "Mix",
         juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f),
-        100.0f));
+        100.0f
+    ));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "HPF",
+        "Sidechain HPF",
+        juce::NormalisableRange<float>(20.0f, 500.0f, 1.0f),
+        80.0f
+    ));
 
     return layout;
 }
 
-void LaPautaSLAudioProcessor::prepareToPlay(
-    double sampleRate, int samplesPerBlock)
+const juce::String LaPautaSLCompresorAudioProcessor::getName() const
+{
+    return JucePlugin_Name;
+}
+
+bool LaPautaSLCompresorAudioProcessor::acceptsMidi() const
+{
+    return false;
+}
+
+bool LaPautaSLCompresorAudioProcessor::producesMidi() const
+{
+    return false;
+}
+
+bool LaPautaSLCompresorAudioProcessor::isMidiEffect() const
+{
+    return false;
+}
+
+double LaPautaSLCompresorAudioProcessor::getTailLengthSeconds() const
+{
+    return 0.0;
+}
+
+int LaPautaSLCompresorAudioProcessor::getNumPrograms()
+{
+    return 5;
+}
+
+int LaPautaSLCompresorAudioProcessor::getCurrentProgram()
+{
+    return currentProgram;
+}
+
+void LaPautaSLCompresorAudioProcessor::setCurrentProgram(int index)
+{
+    currentProgram = juce::jlimit(0, 4, index);
+
+    switch (currentProgram)
+    {
+        case 0:
+            parameters.getParameter("THRESHOLD")->setValueNotifyingHost(
+                parameters.getParameterRange("THRESHOLD")
+                    .convertTo0to1(-18.0f));
+            parameters.getParameter("RATIO")->setValueNotifyingHost(
+                parameters.getParameterRange("RATIO")
+                    .convertTo0to1(3.0f));
+            parameters.getParameter("RELEASE")->setValueNotifyingHost(
+                parameters.getParameterRange("RELEASE")
+                    .convertTo0to1(100.0f));
+            parameters.getParameter("MAKEUP")->setValueNotifyingHost(
+                parameters.getParameterRange("MAKEUP")
+                    .convertTo0to1(2.0f));
+            break;
+
+        case 1:
+            parameters.getParameter("THRESHOLD")->setValueNotifyingHost(
+                parameters.getParameterRange("THRESHOLD")
+                    .convertTo0to1(-24.0f));
+            parameters.getParameter("RATIO")->setValueNotifyingHost(
+                parameters.getParameterRange("RATIO")
+                    .convertTo0to1(4.0f));
+            parameters.getParameter("RELEASE")->setValueNotifyingHost(
+                parameters.getParameterRange("RELEASE")
+                    .convertTo0to1(150.0f));
+            parameters.getParameter("MAKEUP")->setValueNotifyingHost(
+                parameters.getParameterRange("MAKEUP")
+                    .convertTo0to1(3.0f));
+            break;
+
+        case 2:
+            parameters.getParameter("THRESHOLD")->setValueNotifyingHost(
+                parameters.getParameterRange("THRESHOLD")
+                    .convertTo0to1(-20.0f));
+            parameters.getParameter("RATIO")->setValueNotifyingHost(
+                parameters.getParameterRange("RATIO")
+                    .convertTo0to1(5.0f));
+            parameters.getParameter("RELEASE")->setValueNotifyingHost(
+                parameters.getParameterRange("RELEASE")
+                    .convertTo0to1(90.0f));
+            parameters.getParameter("MAKEUP")->setValueNotifyingHost(
+                parameters.getParameterRange("MAKEUP")
+                    .convertTo0to1(1.0f));
+            break;
+
+        case 3:
+            parameters.getParameter("THRESHOLD")->setValueNotifyingHost(
+                parameters.getParameterRange("THRESHOLD")
+                    .convertTo0to1(-15.0f));
+            parameters.getParameter("RATIO")->setValueNotifyingHost(
+                parameters.getParameterRange("RATIO")
+                    .convertTo0to1(2.0f));
+            parameters.getParameter("RELEASE")->setValueNotifyingHost(
+                parameters.getParameterRange("RELEASE")
+                    .convertTo0to1(250.0f));
+            parameters.getParameter("MAKEUP")->setValueNotifyingHost(
+                parameters.getParameterRange("MAKEUP")
+                    .convertTo0to1(1.0f));
+            break;
+
+        case 4:
+            parameters.getParameter("THRESHOLD")->setValueNotifyingHost(
+                parameters.getParameterRange("THRESHOLD")
+                    .convertTo0to1(-12.0f));
+            parameters.getParameter("RATIO")->setValueNotifyingHost(
+                parameters.getParameterRange("RATIO")
+                    .convertTo0to1(2.0f));
+            parameters.getParameter("RELEASE")->setValueNotifyingHost(
+                parameters.getParameterRange("RELEASE")
+                    .convertTo0to1(300.0f));
+            parameters.getParameter("MAKEUP")->setValueNotifyingHost(
+                parameters.getParameterRange("MAKEUP")
+                    .convertTo0to1(0.0f));
+            break;
+    }
+}
+
+const juce::String LaPautaSLCompresorAudioProcessor::getProgramName(int index)
+{
+    const juce::String names[] = {
+        "Vocal Control",
+        "Drum Bus",
+        "Bass Control",
+        "Mix Bus",
+        "Master Glue"
+    };
+
+    if (index < 0 || index >= 5)
+        return {};
+
+    return names[index];
+}
+
+void LaPautaSLCompresorAudioProcessor::changeProgramName(
+    int index,
+    const juce::String& newName)
+{
+    juce::ignoreUnused(index, newName);
+}
+
+void LaPautaSLCompresorAudioProcessor::prepareToPlay(
+    double sampleRate,
+    int samplesPerBlock)
 {
     juce::ignoreUnused(samplesPerBlock);
 
-    currentSampleRate = sampleRate > 0.0 ? sampleRate : 44100.0;
+    currentSampleRate = sampleRate;
 
     envelope = 0.0f;
-    smoothedGainDb = 0.0f;
-    gainReductionDb.store(0.0f);
+    previousInput[0] = 0.0f;
+    previousInput[1] = 0.0f;
+    previousHighPass[0] = 0.0f;
+    previousHighPass[1] = 0.0f;
 }
 
-void LaPautaSLAudioProcessor::releaseResources()
+void LaPautaSLCompresorAudioProcessor::releaseResources()
 {
-    envelope = 0.0f;
-    smoothedGainDb = 0.0f;
-    gainReductionDb.store(0.0f);
 }
 
-bool LaPautaSLAudioProcessor::isBusesLayoutSupported(
+bool LaPautaSLCompresorAudioProcessor::isBusesLayoutSupported(
     const BusesLayout& layouts) const
 {
     const auto input = layouts.getMainInputChannelSet();
@@ -78,7 +244,7 @@ bool LaPautaSLAudioProcessor::isBusesLayoutSupported(
         || input == juce::AudioChannelSet::stereo();
 }
 
-void LaPautaSLAudioProcessor::processBlock(
+void LaPautaSLCompresorAudioProcessor::processBlock(
     juce::AudioBuffer<float>& buffer,
     juce::MidiBuffer& midiMessages)
 {
@@ -86,11 +252,11 @@ void LaPautaSLAudioProcessor::processBlock(
 
     juce::ScopedNoDenormals noDenormals;
 
-    const int channels = getTotalNumInputChannels();
-    const int samples = buffer.getNumSamples();
+    const int numSamples = buffer.getNumSamples();
+    const int numChannels = buffer.getNumChannels();
 
-    for (int ch = channels; ch < getTotalNumOutputChannels(); ++ch)
-        buffer.clear(ch, 0, samples);
+    if (numChannels == 0)
+        return;
 
     const float threshold =
         parameters.getRawParameterValue("THRESHOLD")->load();
@@ -98,119 +264,146 @@ void LaPautaSLAudioProcessor::processBlock(
     const float ratio =
         parameters.getRawParameterValue("RATIO")->load();
 
-    const float attackMs =
-        parameters.getRawParameterValue("ATTACK")->load();
+    const float releaseMs =
+        parameters.getRawParameterValue("RELEASE")->load();
 
     const float makeupDb =
         parameters.getRawParameterValue("MAKEUP")->load();
 
     const float mix =
-        parameters.getRawParameterValue("MIX")->load() / 100.0f;
+        parameters.getRawParameterValue("MIX")->load() * 0.01f;
 
-    constexpr float releaseMs = 200.0f;
+    const float hpfHz =
+        parameters.getRawParameterValue("HPF")->load();
 
-    const float attackCoeff = std::exp(
-        -1.0f / static_cast<float>(
-            currentSampleRate * attackMs * 0.001));
+    const float attackMs = 10.0f;
 
-    const float releaseCoeff = std::exp(
-        -1.0f / static_cast<float>(
-            currentSampleRate * releaseMs * 0.001));
+    const float attackCoefficient =
+        std::exp(-1.0f /
+        (0.001f * attackMs * (float)currentSampleRate));
 
-    const float makeupLinear = juce::Decibels::decibelsToGain(makeupDb);
+    const float releaseCoefficient =
+        std::exp(-1.0f /
+        (0.001f * releaseMs * (float)currentSampleRate));
 
-    float maximumGR = 0.0f;
+    const float hpfCoefficient =
+        std::exp(
+            -juce::MathConstants<float>::twoPi *
+            hpfHz / (float)currentSampleRate
+        );
 
-    for (int i = 0; i < samples; ++i)
+    const float makeupGain =
+        juce::Decibels::decibelsToGain(makeupDb);
+
+    const float dryGain = 1.0f - mix;
+    const float wetGain = mix;
+
+    for (int sample = 0; sample < numSamples; ++sample)
     {
-        float left = buffer.getSample(0, i);
-        float right = channels > 1 ? buffer.getSample(1, i) : left;
+        float detector = 0.0f;
 
-        const float dryLeft = left;
-        const float dryRight = right;
+        for (int channel = 0; channel < numChannels; ++channel)
+        {
+            const float input = buffer.getSample(channel, sample);
 
-        // Detector estéreo enlazado.
-        const float detector = juce::jmax(
-            std::abs(left), std::abs(right));
+            const float highPassed =
+                hpfCoefficient *
+                (previousHighPass[channel] + input -
+                 previousInput[channel]);
 
-        const float detectorCoeff =
-            detector > envelope ? attackCoeff : releaseCoeff;
+            previousInput[channel] = input;
+            previousHighPass[channel] = highPassed;
 
-        envelope = detectorCoeff * envelope
-                 + (1.0f - detectorCoeff) * detector;
+            detector = juce::jmax(
+                detector,
+                std::abs(highPassed)
+            );
+        }
 
-        const float envelopeDb = juce::Decibels::gainToDecibels(
-            juce::jmax(envelope, 0.000001f));
+        const float coefficient =
+            detector > envelope
+                ? attackCoefficient
+                : releaseCoefficient;
 
-        float targetGainDb = 0.0f;
+        envelope =
+            coefficient * envelope +
+            (1.0f - coefficient) * detector;
 
-        if (envelopeDb > threshold)
+        const float detectorDb =
+            juce::Decibels::gainToDecibels(
+                juce::jmax(envelope, 0.000001f)
+            );
+
+        float gainReductionDb = 0.0f;
+
+        if (detectorDb > threshold)
         {
             const float compressedDb =
-                threshold + (envelopeDb - threshold) / ratio;
+                threshold +
+                (detectorDb - threshold) / ratio;
 
-            targetGainDb = compressedDb - envelopeDb;
+            gainReductionDb = compressedDb - detectorDb;
         }
 
-        const float gainCoeff =
-            targetGainDb < smoothedGainDb
-                ? attackCoeff : releaseCoeff;
+        const float compressorGain =
+            juce::Decibels::decibelsToGain(gainReductionDb);
 
-        smoothedGainDb =
-            gainCoeff * smoothedGainDb
-            + (1.0f - gainCoeff) * targetGainDb;
-
-        const float gr = juce::jmax(0.0f, -smoothedGainDb);
-
-        maximumGR = juce::jmax(maximumGR, gr);
-
-        const float compressedGain =
-            juce::Decibels::decibelsToGain(smoothedGainDb)
-            * makeupLinear;
-
-        const float wetLeft = dryLeft * compressedGain;
-        const float wetRight = dryRight * compressedGain;
-
-        buffer.setSample(0, i,
-            dryLeft * (1.0f - mix) + wetLeft * mix);
-
-        if (channels > 1)
+        for (int channel = 0; channel < numChannels; ++channel)
         {
-            buffer.setSample(1, i,
-                dryRight * (1.0f - mix) + wetRight * mix);
+            const float dry = buffer.getSample(channel, sample);
+
+            const float wet =
+                dry * compressorGain * makeupGain;
+
+            const float output =
+                dry * dryGain + wet * wetGain;
+
+            buffer.setSample(channel, sample, output);
         }
     }
-
-    gainReductionDb.store(maximumGR);
 }
 
-void LaPautaSLAudioProcessor::getStateInformation(
-    juce::MemoryBlock& destData)
+bool LaPautaSLCompresorAudioProcessor::hasEditor() const
 {
-    auto state = parameters.copyState();
-    std::unique_ptr<juce::XmlElement> xml(state.createXml());
-
-    copyXmlToBinary(*xml, destData);
-}
-
-void LaPautaSLAudioProcessor::setStateInformation(
-    const void* data, int sizeInBytes)
-{
-    std::unique_ptr<juce::XmlElement> xml(
-        getXmlFromBinary(data, sizeInBytes));
-
-    if (xml != nullptr && xml->hasTagName(parameters.state.getType()))
-        parameters.replaceState(
-            juce::ValueTree::fromXml(*xml));
+    return true;
 }
 
 juce::AudioProcessorEditor*
-LaPautaSLAudioProcessor::createEditor()
+LaPautaSLCompresorAudioProcessor::createEditor()
 {
     return new LaPautaSLEditor(*this);
 }
 
+void LaPautaSLCompresorAudioProcessor::getStateInformation(
+    juce::MemoryBlock& destData)
+{
+    auto state = parameters.copyState();
+
+    std::unique_ptr<juce::XmlElement> xml(
+        state.createXml()
+    );
+
+    copyXmlToBinary(*xml, destData);
+}
+
+void LaPautaSLCompresorAudioProcessor::setStateInformation(
+    const void* data,
+    int sizeInBytes)
+{
+    std::unique_ptr<juce::XmlElement> xml(
+        getXmlFromBinary(data, sizeInBytes)
+    );
+
+    if (xml != nullptr &&
+        xml->hasTagName(parameters.state.getType()))
+    {
+        parameters.replaceState(
+            juce::ValueTree::fromXml(*xml)
+        );
+    }
+}
+
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new LaPautaSLAudioProcessor();
+    return new LaPautaSLCompresorAudioProcessor();
 }
