@@ -1,23 +1,22 @@
 
 #include "PluginEditor.h"
 
-static const juce::Colour backgroundColour(0xff17191b);
-static const juce::Colour metalColour(0xff34383b);
-static const juce::Colour silverColour(0xffc5c9ca);
-static const juce::Colour amberColour(0xffffb94e);
-static const juce::Colour cyanColour(0xff50c8dc);
-
-LaPautaLookAndFeel::LaPautaLookAndFeel()
+LaPautaSLLookAndFeel::LaPautaSLLookAndFeel()
 {
-    setColour(juce::Slider::thumbColourId, silverColour);
-    setColour(juce::Slider::rotarySliderFillColourId, amberColour);
+    setColour(juce::Slider::rotarySliderFillColourId,
+              juce::Colour(0xffd2a85a));
     setColour(juce::Slider::rotarySliderOutlineColourId,
-              juce::Colours::transparentBlack);
+              juce::Colour(0xff292b2c));
+    setColour(juce::Slider::thumbColourId,
+              juce::Colour(0xfff0d59a));
 }
 
-void LaPautaLookAndFeel::drawRotarySlider(
+void LaPautaSLLookAndFeel::drawRotarySlider(
     juce::Graphics& g,
-    int x, int y, int width, int height,
+    int x,
+    int y,
+    int width,
+    int height,
     float sliderPos,
     float rotaryStartAngle,
     float rotaryEndAngle,
@@ -25,155 +24,159 @@ void LaPautaLookAndFeel::drawRotarySlider(
 {
     juce::ignoreUnused(slider);
 
-    const float size = juce::jmin(
-        static_cast<float>(width),
-        static_cast<float>(height)) * 0.88f;
+    auto bounds = juce::Rectangle<float>(
+        (float)x, (float)y, (float)width, (float)height
+    ).reduced(8.0f);
 
-    const float cx = x + width * 0.5f;
-    const float cy = y + height * 0.5f;
+    auto diameter = juce::jmin(bounds.getWidth(), bounds.getHeight());
+    auto radius = diameter * 0.5f;
+    auto centreX = bounds.getCentreX();
+    auto centreY = bounds.getCentreY();
 
-    const float radius = size * 0.5f;
-    const float angle = rotaryStartAngle
-        + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+    auto angle = rotaryStartAngle +
+        sliderPos * (rotaryEndAngle - rotaryStartAngle);
 
-    const float knobRadius = radius * 0.78f;
+    g.setColour(juce::Colour(0xff17191a));
+    g.fillEllipse(
+        centreX - radius,
+        centreY - radius,
+        diameter,
+        diameter
+    );
 
-    // Sombra exterior
-    g.setColour(juce::Colours::black.withAlpha(0.75f));
-    g.fillEllipse(cx - knobRadius + 3.0f,
-                  cy - knobRadius + 5.0f,
-                  knobRadius * 2.0f,
-                  knobRadius * 2.0f);
+    g.setColour(juce::Colour(0xff55585a));
+    g.drawEllipse(
+        centreX - radius,
+        centreY - radius,
+        diameter,
+        diameter,
+        2.0f
+    );
 
-    // Anillo metálico
-    g.setColour(juce::Colour(0xff777e82));
-    g.fillEllipse(cx - knobRadius - 3.0f,
-                  cy - knobRadius - 3.0f,
-                  knobRadius * 2.0f + 6.0f,
-                  knobRadius * 2.0f + 6.0f);
+    auto innerRadius = radius * 0.78f;
 
-    juce::ColourGradient body(
-        juce::Colour(0xff62696d), cx - knobRadius, cy - knobRadius,
-        juce::Colour(0xff171a1c), cx + knobRadius, cy + knobRadius,
-        false);
+    g.setGradientFill(
+        juce::ColourGradient(
+            juce::Colour(0xff55585a),
+            centreX,
+            centreY - innerRadius,
+            juce::Colour(0xff111314),
+            centreX,
+            centreY + innerRadius,
+            false
+        )
+    );
 
-    g.setGradientFill(body);
-    g.fillEllipse(cx - knobRadius,
-                  cy - knobRadius,
-                  knobRadius * 2.0f,
-                  knobRadius * 2.0f);
+    g.fillEllipse(
+        centreX - innerRadius,
+        centreY - innerRadius,
+        innerRadius * 2.0f,
+        innerRadius * 2.0f
+    );
 
-    // Cara interior
-    juce::ColourGradient face(
-        juce::Colour(0xff454b4f), cx - knobRadius * 0.5f,
-        cy - knobRadius,
-        juce::Colour(0xff202326), cx + knobRadius * 0.5f,
-        cy + knobRadius, false);
+    g.setColour(juce::Colour(0xffd0d0cc));
+    g.drawEllipse(
+        centreX - innerRadius,
+        centreY - innerRadius,
+        innerRadius * 2.0f,
+        innerRadius * 2.0f,
+        1.0f
+    );
 
-    g.setGradientFill(face);
-    g.fillEllipse(cx - knobRadius * 0.78f,
-                  cy - knobRadius * 0.78f,
-                  knobRadius * 1.56f,
-                  knobRadius * 1.56f);
+    juce::Path pointer;
+    auto pointerLength = radius * 0.62f;
+    auto pointerThickness = 3.0f;
 
-    // Reflejo superior: corregido para JUCE
-    juce::Path reflectionArc;
+    pointer.addRoundedRectangle(
+        -pointerThickness * 0.5f,
+        -pointerLength,
+        pointerThickness,
+        pointerLength * 0.34f,
+        1.5f
+    );
 
-    reflectionArc.addArc(
-        cx - knobRadius * 0.72f,
-        cy - knobRadius * 0.72f,
-        knobRadius * 1.44f,
-        knobRadius * 1.44f,
-        rotaryStartAngle + 0.3f,
-        rotaryStartAngle + 1.8f,
-        true);
+    g.setColour(juce::Colour(0xffe3c17d));
+    g.fillPath(
+        pointer,
+        juce::AffineTransform::rotation(angle)
+            .translated(centreX, centreY)
+    );
 
-    g.setColour(juce::Colours::white.withAlpha(0.12f));
+    auto arcRadius = radius + 3.0f;
+
+    juce::Path backgroundArc;
+    backgroundArc.addCentredArc(
+        centreX, centreY,
+        arcRadius, arcRadius,
+        0.0f,
+        rotaryStartAngle,
+        rotaryEndAngle,
+        true
+    );
+
+    g.setColour(juce::Colour(0xff393c3e));
     g.strokePath(
-        reflectionArc,
-        juce::PathStrokeType(2.0f));
+        backgroundArc,
+        juce::PathStrokeType(3.0f)
+    );
 
-    // Marcas de escala
-    for (int i = 0; i <= 20; ++i)
-    {
-        const float p = i / 20.0f;
-        const float a = rotaryStartAngle
-            + p * (rotaryEndAngle - rotaryStartAngle);
+    juce::Path valueArc;
+    valueArc.addCentredArc(
+        centreX, centreY,
+        arcRadius, arcRadius,
+        0.0f,
+        rotaryStartAngle,
+        angle,
+        true
+    );
 
-        const float r1 = radius * 0.91f;
-        const float r2 = radius * (i % 5 == 0 ? 0.78f : 0.84f);
-
-        juce::Point<float> p1(
-            cx + std::cos(a) * r1,
-            cy + std::sin(a) * r1);
-
-        juce::Point<float> p2(
-            cx + std::cos(a) * r2,
-            cy + std::sin(a) * r2);
-
-        g.setColour(i % 5 == 0
-            ? juce::Colours::white.withAlpha(0.9f)
-            : juce::Colours::white.withAlpha(0.35f));
-
-        g.drawLine(p1.x, p1.y, p2.x, p2.y,
-                   i % 5 == 0 ? 2.0f : 1.0f);
-    }
-
-    // Indicador blanco
-    const float pointerRadius = knobRadius * 0.66f;
-
-    juce::Point<float> pointer(
-        cx + std::cos(angle) * pointerRadius,
-        cy + std::sin(angle) * pointerRadius);
-
-    g.setColour(juce::Colours::black.withAlpha(0.7f));
-
-    g.drawLine(
-        cx + std::cos(angle) * (pointerRadius - 1.0f),
-        cy + std::sin(angle) * (pointerRadius - 1.0f),
-        pointer.x + 1.0f, pointer.y + 2.0f, 6.0f);
-
-    g.setColour(juce::Colours::white);
-
-    g.drawLine(
-        cx + std::cos(angle) * (pointerRadius - 1.0f),
-        cy + std::sin(angle) * (pointerRadius - 1.0f),
-        pointer.x, pointer.y, 4.0f);
+    g.setColour(juce::Colour(0xffd2a85a));
+    g.strokePath(
+        valueArc,
+        juce::PathStrokeType(3.0f)
+    );
 }
 
 LaPautaSLEditor::LaPautaSLEditor(
-    LaPautaSLAudioProcessor& processor)
+    LaPautaSLCompresorAudioProcessor& processor)
     : AudioProcessorEditor(&processor),
-      audioProcessor(processor),
-      thresholdAttachment(processor.parameters, "THRESHOLD",
-                          thresholdSlider),
-      ratioAttachment(processor.parameters, "RATIO",
-                      ratioSlider),
-      attackAttachment(processor.parameters, "ATTACK",
-                       attackSlider),
-      makeupAttachment(processor.parameters, "MAKEUP",
-                       makeupSlider),
-      mixAttachment(processor.parameters, "MIX",
-                    mixSlider)
+      audioProcessor(processor)
 {
     setLookAndFeel(&lookAndFeel);
 
-    setupKnob(thresholdSlider, "THRESHOLD");
-    setupKnob(ratioSlider, "RATIO");
-    setupKnob(attackSlider, "ATTACK");
-    setupKnob(makeupSlider, "MAKEUP");
-    setupKnob(mixSlider, "MIX");
+    configureSlider(thresholdSlider, thresholdLabel, "THRESHOLD");
+    configureSlider(ratioSlider, ratioLabel, "RATIO");
+    configureSlider(releaseSlider, releaseLabel, "RELEASE");
+    configureSlider(makeupSlider, makeupLabel, "MAKE UP");
+    configureSlider(mixSlider, mixLabel, "MIX");
+    configureSlider(hpfSlider, hpfLabel, "SIDECHAIN HPF");
 
-    addAndMakeVisible(thresholdSlider);
-    addAndMakeVisible(ratioSlider);
-    addAndMakeVisible(attackSlider);
-    addAndMakeVisible(makeupSlider);
-    addAndMakeVisible(mixSlider);
+    thresholdAttachment =
+        std::make_unique<SliderAttachment>(
+            processor.parameters, "THRESHOLD", thresholdSlider);
 
-    setResizable(false, false);
-    setSize(1000, 360);
+    ratioAttachment =
+        std::make_unique<SliderAttachment>(
+            processor.parameters, "RATIO", ratioSlider);
 
-    startTimerHz(30);
+    releaseAttachment =
+        std::make_unique<SliderAttachment>(
+            processor.parameters, "RELEASE", releaseSlider);
+
+    makeupAttachment =
+        std::make_unique<SliderAttachment>(
+            processor.parameters, "MAKEUP", makeupSlider);
+
+    mixAttachment =
+        std::make_unique<SliderAttachment>(
+            processor.parameters, "MIX", mixSlider);
+
+    hpfAttachment =
+        std::make_unique<SliderAttachment>(
+            processor.parameters, "HPF", hpfSlider);
+
+    setSize(1200, 760);
+    startTimerHz(20);
 }
 
 LaPautaSLEditor::~LaPautaSLEditor()
@@ -182,268 +185,208 @@ LaPautaSLEditor::~LaPautaSLEditor()
     setLookAndFeel(nullptr);
 }
 
-void LaPautaSLEditor::setupKnob(
+void LaPautaSLEditor::configureSlider(
     juce::Slider& slider,
-    const juce::String& name)
+    juce::Label& label,
+    const juce::String& labelText)
 {
-    slider.setName(name);
-    slider.setSliderStyle(
-        juce::Slider::RotaryHorizontalVerticalDrag);
+    addAndMakeVisible(slider);
+    addAndMakeVisible(label);
 
+    slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     slider.setTextBoxStyle(
-        juce::Slider::NoTextBox, false, 0, 0);
+        juce::Slider::TextBoxBelow,
+        false,
+        90,
+        24
+    );
 
-    slider.setLookAndFeel(&lookAndFeel);
-    slider.setMouseDragSensitivity(180);
-    slider.setPopupDisplayEnabled(true, false, this);
-}
+    slider.setColour(
+        juce::Slider::textBoxTextColourId,
+        juce::Colour(0xffe4e0d6)
+    );
 
-void LaPautaSLEditor::timerCallback()
-{
-    displayedGR = audioProcessor.getGainReduction();
-    repaint();
-}
+    slider.setColour(
+        juce::Slider::textBoxBackgroundColourId,
+        juce::Colour(0xff202324)
+    );
 
-void LaPautaSLEditor::drawScrew(
-    juce::Graphics& g, float x, float y)
-{
-    g.setColour(juce::Colour(0xff777e82));
-    g.fillEllipse(x - 6.0f, y - 6.0f, 12.0f, 12.0f);
+    slider.setColour(
+        juce::Slider::textBoxOutlineColourId,
+        juce::Colour(0xff55585a)
+    );
 
-    g.setColour(juce::Colour(0xff25292c));
-    g.drawEllipse(x - 6.0f, y - 6.0f, 12.0f, 12.0f, 1.2f);
-
-    g.drawLine(x - 3.0f, y + 3.0f,
-               x + 3.0f, y - 3.0f, 1.5f);
-}
-
-void LaPautaSLEditor::drawMeter(
-    juce::Graphics& g,
-    juce::Rectangle<float> area)
-{
-    g.setColour(juce::Colour(0xff080a0b));
-    g.fillRoundedRectangle(area, 5.0f);
-
-    g.setColour(juce::Colour(0xff60676b));
-    g.drawRoundedRectangle(area, 5.0f, 1.0f);
-
-    g.setColour(juce::Colour(0xffb7bdc0));
-    g.setFont(juce::Font(13.0f, juce::Font::bold));
-
-    g.drawText("GAIN REDUCTION",
-        area.getX(), area.getY() - 24.0f,
-        area.getWidth(), 18.0f,
-        juce::Justification::centred);
-
-    const float value = juce::jlimit(
-        0.0f, 14.0f, displayedGR);
-
-    for (int i = 0; i < 14; ++i)
-    {
-        const float segmentHeight = 9.0f;
-        const float gap = 4.0f;
-
-        const float y = area.getBottom() - 12.0f
-            - (i + 1) * (segmentHeight + gap);
-
-        juce::Colour segmentColour;
-
-        if (i < 7)
-            segmentColour = juce::Colour(0xff39d878);
-        else if (i < 11)
-            segmentColour = juce::Colour(0xffffc444);
-        else
-            segmentColour = juce::Colour(0xffff4d42);
-
-        const bool active = value >= (i + 1);
-
-        g.setColour(active
-            ? segmentColour
-            : segmentColour.withAlpha(0.13f));
-
-        const float columnWidth =
-            (area.getWidth() - 24.0f) / 2.0f;
-
-        for (int column = 0; column < 2; ++column)
-        {
-            const float x = area.getX() + 8.0f
-                + column * (columnWidth + 8.0f);
-
-            g.fillRoundedRectangle(
-                x, y, columnWidth, segmentHeight, 2.0f);
-        }
-    }
-
-    g.setColour(amberColour);
-    g.setFont(juce::Font(18.0f, juce::Font::bold));
-
-    g.drawText(
-        "-" + juce::String(displayedGR, 1) + " dB",
-        area.getX() - 12.0f,
-        area.getBottom() + 9.0f,
-        area.getWidth() + 24.0f,
-        25.0f,
-        juce::Justification::centred);
+    label.setText(labelText, juce::dontSendNotification);
+    label.setJustificationType(juce::Justification::centred);
+    label.setColour(
+        juce::Label::textColourId,
+        juce::Colour(0xff292a29)
+    );
+    label.setFont(juce::Font(15.0f, juce::Font::bold));
 }
 
 void LaPautaSLEditor::paint(juce::Graphics& g)
 {
-    auto bounds = getLocalBounds().toFloat();
+    auto area = getLocalBounds().toFloat();
 
-    juce::ColourGradient background(
-        juce::Colour(0xff303538), 0.0f, 0.0f,
-        backgroundColour, 0.0f, bounds.getBottom(),
-        false);
-
-    g.setGradientFill(background);
+    g.setGradientFill(
+        juce::ColourGradient(
+            juce::Colour(0xffd5d2ca),
+            0.0f, 0.0f,
+            juce::Colour(0xff8e918e),
+            0.0f, (float)getHeight(),
+            false
+        )
+    );
     g.fillAll();
 
-    // Textura metálica
-    for (int y = 0; y < getHeight(); y += 3)
-    {
-        g.setColour(
-            juce::Colours::white.withAlpha(
-                (y % 9 == 0) ? 0.025f : 0.009f));
+    g.setColour(juce::Colour(0xffe7e4dc));
+    g.drawRect(area.reduced(8.0f), 2.0f);
 
-        g.drawHorizontalLine(
-            y, 0.0f, static_cast<float>(getWidth()));
-    }
-
-    // Marco
-    g.setColour(juce::Colour(0xff858c90));
-    g.drawRoundedRectangle(bounds.reduced(4.0f), 8.0f, 1.5f);
-
-    g.setColour(juce::Colour(0xff080a0c));
-    g.drawRoundedRectangle(bounds.reduced(9.0f), 6.0f, 2.0f);
-
-    // Tornillos
-    drawScrew(g, 19.0f, 19.0f);
-    drawScrew(g, 981.0f, 19.0f);
-    drawScrew(g, 19.0f, 341.0f);
-    drawScrew(g, 981.0f, 341.0f);
-
-    // Cabecera
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::Font(25.0f, juce::Font::bold));
-
-    g.drawText("LA PAUTA",
-        38, 18, 180, 31,
-        juce::Justification::left);
-
-    g.setColour(amberColour);
-    g.setFont(juce::Font(21.0f, juce::Font::bold));
-
-    g.drawText("SSL BUS COMPRESSOR",
-        215, 19, 370, 30,
-        juce::Justification::left);
-
-    g.setColour(juce::Colour(0xffa5aaad));
-    g.setFont(juce::Font(11.0f, juce::Font::bold));
-
-    g.drawText("HYBRID EDITION / STEREO ANALOG MODEL",
-        40, 49, 420, 17,
-        juce::Justification::left);
-
-    g.setColour(cyanColour);
-    g.fillRect(40, 72, 920, 1);
-
-    // Controles
-    juce::Slider* sliders[] = {
-        &thresholdSlider, &ratioSlider, &attackSlider,
-        &makeupSlider, &mixSlider
-    };
-
-    const juce::String names[] = {
-        "THRESHOLD", "RATIO", "ATTACK", "MAKEUP", "MIX"
-    };
-
-    const juce::String suffix[] = {
-        " dB", ":1", " ms", " dB", " %"
-    };
-
-    for (int i = 0; i < 5; ++i)
-    {
-        const auto area = knobAreas[i].toFloat();
-
-        g.setColour(juce::Colour(0xff080a0c));
-        g.fillRoundedRectangle(
-            area.getCentreX() - 48.0f,
-            91.0f, 96.0f, 25.0f, 4.0f);
-
-        g.setColour(juce::Colour(0xff666d71));
-        g.drawRoundedRectangle(
-            area.getCentreX() - 48.0f,
-            91.0f, 96.0f, 25.0f, 4.0f, 1.0f);
-
-        const double value = sliders[i]->getValue();
-
-        juce::String display;
-
-        if (i == 0 || i == 1 || i == 2)
-            display = juce::String(value, 1);
-        else if (i == 3)
-            display = "+" + juce::String(value, 1);
-        else
-            display = juce::String(value, 0);
-
-        g.setColour(amberColour);
-        g.setFont(juce::Font(15.0f, juce::Font::bold));
-
-        g.drawText(display + suffix[i],
-            area.getCentreX() - 45.0f,
-            94.0f, 90.0f, 19.0f,
-            juce::Justification::centred);
-
-        g.setColour(juce::Colour(0xffd7dadd));
-        g.setFont(juce::Font(12.0f, juce::Font::bold));
-
-        g.drawText(names[i],
-            area.getX() - 8.0f,
-            267.0f, area.getWidth() + 16.0f, 22.0f,
-            juce::Justification::centred);
-    }
-
-    // Panel del medidor
-    g.setColour(juce::Colour(0xff090b0d));
+    g.setColour(juce::Colour(0xff252829));
     g.fillRoundedRectangle(
-        835.0f, 87.0f, 125.0f, 230.0f, 7.0f);
+        22.0f, 20.0f,
+        1156.0f, 105.0f,
+        8.0f
+    );
 
-    g.setColour(juce::Colour(0xff777e82));
+    g.setColour(juce::Colour(0xffe1c18a));
+    g.setFont(juce::Font(38.0f, juce::Font::italic));
+    g.drawText(
+        "La Pauta",
+        42, 27, 350, 55,
+        juce::Justification::centredLeft
+    );
+
+    g.setColour(juce::Colour(0xffe7e5df));
+    g.setFont(juce::Font(19.0f, juce::Font::bold));
+    g.drawText(
+        "SL COMPRESSOR",
+        45, 78, 350, 25,
+        juce::Justification::centredLeft
+    );
+
+    g.setColour(juce::Colour(0xffd2a85a));
+    g.fillRoundedRectangle(
+        1010.0f, 48.0f,
+        125.0f, 34.0f,
+        5.0f
+    );
+
+    g.setColour(juce::Colour(0xff202324));
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    g.drawText(
+        "STEREO",
+        1010, 48, 125, 34,
+        juce::Justification::centred
+    );
+
+    g.setColour(juce::Colour(0xff343738));
+    g.fillRoundedRectangle(
+        22.0f, 150.0f,
+        1156.0f, 550.0f,
+        8.0f
+    );
+
+    g.setColour(juce::Colour(0xffc5c2b9));
     g.drawRoundedRectangle(
-        835.0f, 87.0f, 125.0f, 230.0f, 7.0f, 1.0f);
+        22.0f, 150.0f,
+        1156.0f, 550.0f,
+        8.0f,
+        2.0f
+    );
 
-    drawMeter(g, { 855.0f, 130.0f, 85.0f, 145.0f });
+    g.setColour(juce::Colour(0xffd2a85a));
+    g.setFont(juce::Font(18.0f, juce::Font::bold));
+    g.drawText(
+        "COMPRESSOR SECTION",
+        50, 165, 400, 30,
+        juce::Justification::centredLeft
+    );
 
-    // Identificación
-    g.setColour(juce::Colour(0xff777e82));
-    g.setFont(juce::Font(9.0f, juce::Font::bold));
+    g.setColour(juce::Colour(0xff252829));
+    g.fillRoundedRectangle(
+        50.0f, 225.0f,
+        1100.0f, 365.0f,
+        8.0f
+    );
 
-    g.drawText("LA PAUTA AUDIO | 2026",
-        38, 328, 300, 15,
-        juce::Justification::left);
+    g.setColour(juce::Colour(0xffb7b4ac));
+    g.drawRoundedRectangle(
+        50.0f, 225.0f,
+        1100.0f, 365.0f,
+        8.0f,
+        1.5f
+    );
+
+    g.setColour(juce::Colour(0xffd2a85a));
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    g.drawText(
+        "ANALOG STYLE STEREO DYNAMICS",
+        60, 610, 600, 28,
+        juce::Justification::centredLeft
+    );
+
+    g.setColour(juce::Colour(0xff202324));
+    g.setFont(juce::Font(12.0f));
+    g.drawText(
+        "LA PAUTA AUDIO  |  VST3  |  WINDOWS 64-BIT",
+        650, 610, 480, 28,
+        juce::Justification::centredRight
+    );
+
+    g.setColour(juce::Colour(0xffd2a85a));
+    g.fillRect(50, 650, 1100, 2);
 }
 
 void LaPautaSLEditor::resized()
 {
-    const int knobWidth = 116;
-    const int knobHeight = 130;
+    const int knobWidth = 150;
+    const int knobHeight = 170;
+    const int labelHeight = 30;
+    const int y = 300;
 
-    const int startX = 57;
-    const int spacing = 153;
-
-    juce::Slider* sliders[] = {
-        &thresholdSlider, &ratioSlider, &attackSlider,
-        &makeupSlider, &mixSlider
+    const int positions[] = {
+        90, 270, 450, 630, 810, 990
     };
 
-    for (int i = 0; i < 5; ++i)
+    juce::Slider* sliders[] = {
+        &thresholdSlider,
+        &ratioSlider,
+        &releaseSlider,
+        &makeupSlider,
+        &mixSlider,
+        &hpfSlider
+    };
+
+    juce::Label* labels[] = {
+        &thresholdLabel,
+        &ratioLabel,
+        &releaseLabel,
+        &makeupLabel,
+        &mixLabel,
+        &hpfLabel
+    };
+
+    for (int i = 0; i < 6; ++i)
     {
-        const int x = startX + i * spacing;
+        sliders[i]->setBounds(
+            positions[i],
+            y,
+            knobWidth,
+            knobHeight
+        );
 
-        knobAreas[i] = {
-            x, 123, knobWidth, knobHeight
-        };
-
-        sliders[i]->setBounds(knobAreas[i]);
+        labels[i]->setBounds(
+            positions[i],
+            y - labelHeight - 8,
+            knobWidth,
+            labelHeight
+        );
     }
+}
+
+void LaPautaSLEditor::timerCallback()
+{
+    repaint();
 }
