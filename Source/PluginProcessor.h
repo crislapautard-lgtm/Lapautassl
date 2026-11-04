@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+
 class LaPautaSLAudioProcessor : public juce::AudioProcessor
 {
 public:
@@ -17,22 +18,17 @@ public:
     double getTailLengthSeconds() const override;
     int getNumPrograms() override;
     int getCurrentProgram() override;
-    void setCurrentProgram (int) override;
-    const juce::String getProgramName (int) override;
-    void changeProgramName (int, const juce::String&) override;
-    void getStateInformation (juce::MemoryBlock&) override;
-    void setStateInformation (const void*, int) override;
-    juce::AudioProcessorValueTreeState apvts;
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
+    void changeProgramName (int index, const juce::String&) override;
+    void getStateInformation (juce::MemoryBlock& destData) override;
+    void setStateInformation (const void* data, int sizeInBytes) override;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    float getInputLevel() { return inputLevel.load(); }
-    float getOutputLevel() { return outputLevel.load(); }
-    float getGainReduction() { return gainReduction.load(); }
+    float getGainReduction() const { return gainReductionDb.load(); }
+    juce::AudioProcessorValueTreeState apvts;
 private:
-    std::atomic<float> inputLevel { -60.0f };
-    std::atomic<float> outputLevel { -60.0f };
-    std::atomic<float> gainReduction { 0.0f };
+    std::atomic<float> gainReductionDb { 0.0f };
     float envelope = 0.0f;
-    juce::dsp::IIR::Filter<float> hpfL, hpfR;
-    double lastSampleRate = 44100.0;
+    float currentGR = 0.0f;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LaPautaSLAudioProcessor)
 };
