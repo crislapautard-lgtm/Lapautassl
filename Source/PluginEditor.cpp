@@ -1,151 +1,326 @@
-#include "PluginProcessor.h"
+
 #include "PluginEditor.h"
 
-LaPautaSLAudioProcessorEditor::LaPautaSLAudioProcessorEditor (LaPautaSLAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
+LaPautaSLAudioProcessorEditor::LaPautaSLAudioProcessorEditor(
+    LaPautaSLAudioProcessor& processor)
+    : AudioProcessorEditor(&processor),
+      audioProcessor(processor)
 {
-    setSize (900, 300);
-    auto setup = [&](juce::Slider& s, juce::Label& lab, juce::Label& val, const juce::String& name){
-        s.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-        s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        s.setLookAndFeel(&proLNF);
-        addAndMakeVisible(s);
-        lab.setText(name, juce::NotificationType::dontSendNotification);
-        lab.setJustificationType(juce::Justification::centred);
-        lab.setColour(juce::Label::textColourId, juce::Colour(0xffb8b8b8));
-        lab.setFont(juce::Font(13.0f, juce::Font::plain));
-        addAndMakeVisible(lab);
-        val.setJustificationType(juce::Justification::centred);
-        val.setColour(juce::Label::textColourId, juce::Colour(0xffffcc33));
-        val.setFont(juce::Font(22.0f, juce::Font::bold));
-        addAndMakeVisible(val);
+    setLookAndFeel(&metalLook);
+    setSize(900, 300);
+    setResizable(false, false);
+
+    auto setupControl = [this](
+        juce::Slider& slider,
+        juce::Label& value,
+        juce::Label& name,
+        const juce::String& label)
+    {
+        setupSlider(slider);
+        setupLabel(value, "0.0");
+        setupLabel(name, label);
+
+        addAndMakeVisible(slider);
+        addAndMakeVisible(value);
+        addAndMakeVisible(name);
     };
-    setup(thresholdSlider, thresholdLabel, thresholdVal, "THRESHOLD");
-    setup(ratioSlider, ratioLabel, ratioVal, "RATIO");
-    setup(attackSlider, attackLabel, attackVal, "ATTACK");
-    setup(makeupSlider, makeupLabel, makeupVal, "MAKEUP");
-    setup(mixSlider, mixLabel, mixVal, "MIX");
-    auto& apvts = audioProcessor.apvts;
-    attThreshold.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, "threshold", thresholdSlider));
-    attRatio.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, "ratio", ratioSlider));
-    attAttack.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, "attack", attackSlider));
-    attMakeup.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, "makeup", makeupSlider));
-    attMix.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, "mix", mixSlider));
+
+    setupControl(thresholdSlider, thresholdValue, thresholdName, "THRESHOLD");
+    setupControl(ratioSlider, ratioValue, ratioName, "RATIO");
+    setupControl(attackSlider, attackValue, attackName, "ATTACK");
+    setupControl(makeupSlider, makeupValue, makeupName, "MAKEUP");
+    setupControl(mixSlider, mixValue, mixName, "MIX");
+
+    auto& state = audioProcessor.parameters;
+
+    thresholdAttachment = std::make_unique<SliderAttachment>(
+        state, "THRESHOLD", thresholdSlider);
+    ratioAttachment = std::make_unique<SliderAttachment>(
+        state, "RATIO", ratioSlider);
+    attackAttachment = std::make_unique<SliderAttachment>(
+        state, "ATTACK", attackSlider);
+    makeupAttachment = std::make_unique<SliderAttachment>(
+        state, "MAKEUP", makeupSlider);
+    mixAttachment = std::make_unique<SliderAttachment>(
+        state, "MIX", mixSlider);
+
+    auto updateValues = [this]()
+    {
+        thresholdValue.setText(
+            juce::String(thresholdSlider.getValue(), 1) + " dB",
+            juce::dontSendNotification);
+
+        ratioValue.setText(
+            juce::String(ratioSlider.getValue(), 1) + ":1",
+            juce::dontSendNotification);
+
+        attackValue.setText(
+            juce::String(attackSlider.getValue(), 1) + " ms",
+            juce::dontSendNotification);
+
+        makeupValue.setText(
+            "+" + juce::String(makeupSlider.getValue(), 1) + " dB",
+            juce::dontSendNotification);
+
+        mixValue.setText(
+            juce::String(mixSlider.getValue(), 0) + "%",
+            juce::dontSendNotification);
+    };
+
+    thresholdSlider.onValueChange = updateValues;
+    ratioSlider.onValueChange = updateValues;
+    attackSlider.onValueChange = updateValues;
+    makeupSlider.onValueChange = updateValues;
+    mixSlider.onValueChange = updateValues;
+
+    updateValues();
     startTimerHz(30);
 }
 
 LaPautaSLAudioProcessorEditor::~LaPautaSLAudioProcessorEditor()
 {
     stopTimer();
-    for(auto* s : {&thresholdSlider, &ratioSlider, &attackSlider, &makeupSlider, &mixSlider})
-        s->setLookAndFeel(nullptr);
+    setLookAndFeel(nullptr);
 }
 
-void LaPautaSLAudioProcessorEditor::paint (juce::Graphics& g)
+void LaPautaSLAudioProcessorEditor::setupSlider(juce::Slider& slider)
 {
-    // Fondo metal cepillado oscuro - como la imagen
-    juce::ColourGradient bg(juce::Colour(0xff3a3a3a), 0, 0, juce::Colour(0xff1a1a1a), 0, (float)getHeight(), false);
-    g.setGradientFill(bg);
+    slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    slider.setLookAndFeel(&metalLook);
+}
+
+void LaPautaSLAudioProcessorEditor::setupLabel(
+    juce::Label& label, const juce::String& text)
+{
+    label.setText(text, juce::dontSendNotification);
+    label.setJustificationType(juce::Justification::centred);
+    label.setColour(juce::Label::textColourId,
+                    juce::Colour(0xffbdbdbd));
+    label.setFont(juce::Font(11.0f, juce::Font::bold));
+}
+
+void LaPautaSLAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
+    juce::Graphics& g,
+    int x, int y, int width, int height,
+    float sliderPos,
+    float rotaryStartAngle,
+    float rotaryEndAngle,
+    juce::Slider&)
+{
+    const float diameter = juce::jmin(
+        (float)width, (float)height) - 18.0f;
+
+    const float cx = x + width * 0.5f;
+    const float cy = y + height * 0.5f;
+    const float radius = diameter * 0.5f;
+
+    const float angle = rotaryStartAngle +
+        sliderPos * (rotaryEndAngle - rotaryStartAngle);
+
+    g.setColour(juce::Colours::black.withAlpha(0.85f));
+    g.fillEllipse(cx - radius + 3, cy - radius + 5,
+                  diameter, diameter);
+
+    juce::ColourGradient ring(
+        juce::Colour(0xffb9b9b9), cx, cy - radius,
+        juce::Colour(0xff353535), cx, cy + radius, false);
+
+    g.setGradientFill(ring);
+    g.fillEllipse(cx - radius, cy - radius, diameter, diameter);
+
+    juce::ColourGradient metal(
+        juce::Colour(0xff555555), cx, cy - radius * 0.75f,
+        juce::Colour(0xff111111), cx, cy + radius, false);
+
+    g.setGradientFill(metal);
+    g.fillEllipse(cx - radius + 4, cy - radius + 4,
+                  diameter - 8, diameter - 8);
+
+    for (int i = 0; i <= 20; ++i)
+    {
+        const float a = rotaryStartAngle +
+            (rotaryEndAngle - rotaryStartAngle) * i / 20.0f;
+
+        const float inner = radius + 3.0f;
+        const float outer = radius + 9.0f;
+
+        g.setColour(juce::Colour(0xffdddddd));
+        g.drawLine(
+            cx + std::cos(a) * inner,
+            cy + std::sin(a) * inner,
+            cx + std::cos(a) * outer,
+            cy + std::sin(a) * outer,
+            1.2f);
+    }
+
+    g.setColour(juce::Colour(0xff222222));
+    g.fillEllipse(cx - radius * 0.68f, cy - radius * 0.68f,
+                  radius * 1.36f, radius * 1.36f);
+
+    g.setColour(juce::Colour(0xff777777));
+    g.drawEllipse(cx - radius * 0.68f, cy - radius * 0.68f,
+                  radius * 1.36f, radius * 1.36f, 1.0f);
+
+    const float indicatorLength = radius * 0.48f;
+    const float ix = cx + std::cos(angle) * indicatorLength;
+    const float iy = cy + std::sin(angle) * indicatorLength;
+
+    g.setColour(juce::Colours::white);
+    g.drawLine(cx, cy, ix, iy, 3.0f);
+    g.fillEllipse(ix - 2.0f, iy - 2.0f, 4.0f, 4.0f);
+}
+
+void LaPautaSLAudioProcessorEditor::paint(juce::Graphics& g)
+{
+    juce::ColourGradient background(
+        juce::Colour(0xff3a3a3a), 0.0f, 0.0f,
+        juce::Colour(0xff1a1a1a), 0.0f, 300.0f, false);
+
+    g.setGradientFill(background);
     g.fillAll();
 
-    // Header
-    g.setColour(juce::Colour(0xff222222));
-    g.fillRect(0, 0, getWidth(), 52);
-    g.setColour(juce::Colour(0xff000000));
-    g.drawLine(0, 52, (float)getWidth(), 52, 2.0f);
-    g.setColour(juce::Colour(0xffe8e8e8));
-    g.setFont(juce::Font(18.0f, juce::Font::bold));
-    g.drawText("LA PAUTA - SSL BUS COMPRESSOR", 18, 8, 500, 20, juce::Justification::left);
-    g.setColour(juce::Colour(0xffb8b8b8));
-    g.setFont(juce::Font(13.0f, juce::Font::plain));
-    g.drawText("HYBRID EDITION", 18, 28, 300, 16, juce::Justification::left);
+    g.setColour(juce::Colours::white.withAlpha(0.025f));
 
-    // Tornillos
-    auto screw = [&](int x, int y){
-        g.setColour(juce::Colour(0xff0a0a0a));
-        g.fillEllipse(x, y, 16, 16);
-        g.setColour(juce::Colour(0xff777777));
-        g.drawEllipse(x, y, 16, 16, 1.2f);
-        g.setColour(juce::Colours::white);
-        g.drawLine(x+4, y+8, x+12, y+8, 1.5f);
-    };
-    screw(10, 65); screw(getWidth()-26, 65);
-    screw(10, getHeight()-26); screw(getWidth()-26, getHeight()-26);
+    for (int y = 0; y < 300; y += 3)
+        g.drawHorizontalLine(y, 0.0f, 900.0f);
 
-    // Cajas amarillas de valores encima de cada perilla - como en la imagen
-    auto drawValueBox = [&](juce::Label& val, int x){
-        g.setColour(juce::Colour(0xff2a1a00));
-        g.fillRoundedRectangle(x, 78, 130, 38, 3.0f);
-        g.setColour(juce::Colour(0xff000000));
-        g.drawRoundedRectangle(x, 78, 130, 38, 3.0f, 1.0f);
-        val.setBounds(x, 78, 130, 38);
-    };
-    drawValueBox(thresholdVal, 55);
-    drawValueBox(ratioVal, 220);
-    drawValueBox(attackVal, 385);
-    drawValueBox(makeupVal, 550);
-    drawValueBox(mixVal, 715);
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(20.0f, juce::Font::bold));
+    g.drawText("LA PAUTA - SSL BUS COMPRESSOR",
+               28, 12, 520, 25, juce::Justification::left);
 
-    // ===== MEDIDOR GR AL LADO DEL MIX - COMO EN LA IMAGEN =====
-    int meterX = 845;
-    int meterY = 80;
-    int meterW = 32;
-    int meterH = 165;
-    g.setColour(juce::Colour(0xffd4a24a));
-    g.setFont(juce::Font(14.0f, juce::Font::bold));
-    g.drawText("GR", meterX, meterY - 18, meterW, 14, juce::Justification::centred);
-    g.setColour(juce::Colour(0xff0a0a0a));
-    g.fillRect(meterX, meterY, meterW, meterH);
-    g.setColour(juce::Colour(0xff333333));
-    g.drawRect(meterX, meterY, meterW, meterH, 1);
+    g.setColour(juce::Colour(0xff999999));
+    g.setFont(juce::Font(11.0f, juce::Font::bold));
+    g.drawText("HYBRID EDITION",
+               29, 38, 250, 16, juce::Justification::left);
 
-    // Segmentos verde / amarillo / rojo - FUNCIONA DE VERDAD
-    float gr = juce::jlimit(0.0f, 1.0f, grLevel);
-    int totalSegs = 14;
-    int litSegs = (int)(gr * totalSegs);
-    for (int i = 0; i < totalSegs; ++i)
+    auto drawScrew = [&g](float x, float y)
     {
-        int segY = meterY + meterH - (i+1) * (meterH / totalSegs);
-        int segH = (meterH / totalSegs) - 2;
-        bool on = i < litSegs;
-        juce::Colour c;
-        if (i < 6) c = juce::Colour(0xff33cc44);
-        else if (i < 10) c = juce::Colour(0xffffcc00);
-        else c = juce::Colour(0xffff2222);
-        g.setColour(on ? c : juce::Colour(0xff1a1a1a));
-        // Doble columna como en la imagen
-        g.fillRect(meterX+4, segY, 10, segH);
-        g.fillRect(meterX+18, segY, 10, segH);
+        g.setColour(juce::Colour(0xff111111));
+        g.fillEllipse(x, y, 15.0f, 15.0f);
+
+        g.setColour(juce::Colour(0xff888888));
+        g.drawEllipse(x, y, 15.0f, 15.0f, 1.0f);
+
+        g.setColour(juce::Colour(0xffcccccc));
+        g.drawLine(x + 4.0f, y + 11.0f,
+                   x + 11.0f, y + 4.0f, 1.2f);
+    };
+
+    drawScrew(8, 8);
+    drawScrew(877, 8);
+    drawScrew(8, 277);
+    drawScrew(877, 277);
+
+    juce::Label* values[] = {
+        &thresholdValue, &ratioValue, &attackValue,
+        &makeupValue, &mixValue
+    };
+
+    for (auto* label : values)
+    {
+        auto r = label->getBounds().toFloat();
+
+        g.setColour(juce::Colour(0xff080808));
+        g.fillRoundedRectangle(r, 3.0f);
+
+        g.setColour(juce::Colour(0xff555555));
+        g.drawRoundedRectangle(r, 3.0f, 1.0f);
+
+        label->setColour(
+            juce::Label::textColourId,
+            juce::Colour(0xffffbd55));
     }
-    g.setColour(juce::Colour(0xffd4a24a));
-    g.setFont(juce::Font(13.0f, juce::Font::bold));
-    float grDb = grLevel * -20.0f;
-    g.drawText(juce::String(grDb, 1) + " dB", meterX - 12, meterY + meterH + 5, meterW + 24, 14, juce::Justification::centred);
+
+    g.setColour(juce::Colour(0xffaaaaaa));
+    g.setFont(juce::Font(12.0f, juce::Font::bold));
+    g.drawText("GR", 790, 65, 65, 20,
+               juce::Justification::centred);
+
+    const float reduction = juce::jlimit(
+        0.0f, 14.0f, -audioProcessor.getGainReduction());
+
+    const int activeSegments = juce::jlimit(
+        0, 14, (int)std::round(reduction));
+
+    const float meterX = 802.0f;
+    const float meterY = 92.0f;
+    const float segmentHeight = 10.0f;
+    const float gap = 2.0f;
+
+    for (int i = 0; i < 14; ++i)
+    {
+        const float yy = meterY +
+            (13 - i) * (segmentHeight + gap);
+
+        juce::Colour colour;
+
+        if (i < 7)
+            colour = juce::Colour(0xff36a65b);
+        else if (i < 11)
+            colour = juce::Colour(0xffd2a52c);
+        else
+            colour = juce::Colour(0xffb83c32);
+
+        if (i >= activeSegments)
+            colour = juce::Colour(0xff292929);
+
+        g.setColour(colour);
+        g.fillRoundedRectangle(meterX, yy, 22.0f, segmentHeight, 2.0f);
+        g.fillRoundedRectangle(meterX + 25.0f, yy, 22.0f,
+                               segmentHeight, 2.0f);
+    }
+
+    g.setColour(juce::Colour(0xffffbd55));
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
+
+    g.drawText(
+        juce::String(audioProcessor.getGainReduction(), 1) + " dB",
+        785, 252, 90, 22, juce::Justification::centred);
 }
 
 void LaPautaSLAudioProcessorEditor::resized()
 {
-    // Posiciones exactas como en la imagen
-    int knob = 130;
-    int y = 125;
-    auto place = [&](juce::Slider& s, juce::Label& lab, int x){
-        s.setBounds(x, y, knob, knob);
-        lab.setBounds(x, y + knob + 8, knob, 18);
+    const int knobY = 105;
+    const int knobSize = 105;
+    const int valueY = 75;
+    const int valueW = 90;
+    const int valueH = 22;
+
+    const int centers[] = { 105, 245, 385, 525, 665 };
+
+    juce::Slider* sliders[] = {
+        &thresholdSlider, &ratioSlider, &attackSlider,
+        &makeupSlider, &mixSlider
     };
-    place(thresholdSlider, thresholdLabel, 55);
-    place(ratioSlider, ratioLabel, 220);
-    place(attackSlider, attackLabel, 385);
-    place(makeupSlider, makeupLabel, 550);
-    place(mixSlider, mixLabel, 715);
+
+    juce::Label* values[] = {
+        &thresholdValue, &ratioValue, &attackValue,
+        &makeupValue, &mixValue
+    };
+
+    juce::Label* names[] = {
+        &thresholdName, &ratioName, &attackName,
+        &makeupName, &mixName
+    };
+
+    for (int i = 0; i < 5; ++i)
+    {
+        sliders[i]->setBounds(
+            centers[i] - knobSize / 2,
+            knobY, knobSize, knobSize);
+
+        values[i]->setBounds(
+            centers[i] - valueW / 2,
+            valueY, valueW, valueH);
+
+        names[i]->setBounds(
+            centers[i] - 55, 222, 110, 20);
+    }
 }
 
 void LaPautaSLAudioProcessorEditor::timerCallback()
 {
-    thresholdVal.setText(juce::String(thresholdSlider.getValue(), 1) + " dB", juce::NotificationType::dontSendNotification);
-    ratioVal.setText(juce::String(ratioSlider.getValue(), 1) + ":1", juce::NotificationType::dontSendNotification);
-    attackVal.setText(juce::String(attackSlider.getValue(), 0) + " ms", juce::NotificationType::dontSendNotification);
-    makeupVal.setText(juce::String(makeupSlider.getValue(), 1) + " dB", juce::NotificationType::dontSendNotification);
-    mixVal.setText(juce::String((int)mixSlider.getValue()) + "%", juce::NotificationType::dontSendNotification);
-    grLevel = -audioProcessor.getGainReduction() / 20.0f;
     repaint();
 }
