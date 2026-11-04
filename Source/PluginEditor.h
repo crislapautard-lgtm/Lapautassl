@@ -2,44 +2,29 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
-// LOOK AND FEEL PRO - PERILLAS NEGRAS SSL
-class LaPautaLookAndFeel : public juce::LookAndFeel_V4
+class LaPautaLNF : public juce::LookAndFeel_V4
 {
 public:
-    void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
-                          float sliderPos, float rotaryStartAngle, float rotaryEndAngle, juce::Slider& slider) override
+    void drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float start, float end, juce::Slider& s) override
     {
-        auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat().reduced(4);
-        auto radius = juce::jmin(bounds.getWidth(), bounds.getHeight()) / 2.0f;
-        auto toAngle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
-        auto centre = bounds.getCentre();
-        
-        // Sombra
-        g.setColour(juce::Colours::black.withAlpha(0.5f));
-        g.fillEllipse(centre.x - radius + 2, centre.y - radius + 2, radius*2, radius*2);
-        
-        // Perilla negra carbon
-        g.setColour(juce::Colour(0xff1e1e1e));
-        g.fillEllipse(centre.x - radius, centre.y - radius, radius*2, radius*2);
-        
-        // Borde metalico
+        auto bounds = juce::Rectangle<float>(x, y, w, h).reduced(8);
+        g.setColour(juce::Colour(0xff1a1a1a));
+        g.fillEllipse(bounds);
         g.setColour(juce::Colour(0xff3a3a3a));
-        g.drawEllipse(centre.x - radius, centre.y - radius, radius*2, radius*2, 2.0f);
-        g.setColour(juce::Colour(0xff5a5a5a));
-        g.drawEllipse(centre.x - radius + 1, centre.y - radius + 1, radius*2 - 2, radius*2 - 2, 1.0f);
+        g.drawEllipse(bounds, 2.5f);
         
-        // Linea blanca indicadora
+        auto angle = start + pos * (end - start);
+        auto centre = bounds.getCentre();
+        auto r = bounds.getWidth() * 0.42f;
         juce::Path p;
-        auto pointerLength = radius * 0.7f;
-        auto pointerThickness = 3.0f;
-        p.addRectangle(-pointerThickness * 0.5f, -radius, pointerThickness, pointerLength);
-        p.applyTransform(juce::AffineTransform::rotation(toAngle).translated(centre.x, centre.y));
+        p.addRectangle(-1.5f, -r, 3.0f, r * 0.65f);
         g.setColour(juce::Colours::white);
+        p.applyTransform(juce::AffineTransform::rotation(angle).translated(centre));
         g.fillPath(p);
         
-        // Punto central azul La Pauta
+        auto dotR = bounds.getWidth() * 0.07f;
         g.setColour(juce::Colour(0xff00aaff));
-        g.fillEllipse(centre.x - 3, centre.y - 3, 6, 6);
+        g.fillEllipse(centre.x - dotR, centre.y - bounds.getHeight()*0.38f - dotR, dotR*2, dotR*2);
     }
 };
 
@@ -51,12 +36,20 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     void timerCallback() override;
+
 private:
     LaPautaSLAudioProcessor& audioProcessor;
-    LaPautaLookAndFeel laPautaLNF;
-    
+    LaPautaLNF laPautaLNF;
+
     juce::Slider thresholdSlider, ratioSlider, attackSlider, releaseSlider, makeupSlider, mixSlider;
     juce::Label thresholdLabel, ratioLabel, attackLabel, releaseLabel, makeupLabel, mixLabel;
+    juce::Label thresholdVal, ratioVal, attackVal, releaseVal, makeupVal, mixVal;
     
+    // VU
+    float grLevel = 0.0f;
+    float outLevel = 0.0f;
+    
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attThreshold, attRatio, attAttack, attRelease, attMakeup, attMix;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LaPautaSLAudioProcessorEditor)
 };
