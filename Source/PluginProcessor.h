@@ -12,8 +12,8 @@ public:
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
-    bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
 
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     juce::AudioProcessorEditor* createEditor() override;
@@ -33,29 +33,26 @@ public:
     const juce::String getProgramName(int) override { return {}; }
     void changeProgramName(int, const juce::String&) override {}
 
-    void getStateInformation(juce::MemoryBlock& destData) override;
-    void setStateInformation(const void* data, int sizeInBytes) override;
+    void getStateInformation(juce::MemoryBlock&) override;
+    void setStateInformation(const void*, int) override;
 
     juce::AudioProcessorValueTreeState parameters;
 
     float getGainReduction() const noexcept
     {
-        return gainReductionDb.load(std::memory_order_relaxed);
+        return gainReductionDb.load();
     }
 
 private:
-    std::atomic<float> gainReductionDb { 0.0f };
-
-    std::atomic<float>* thresholdParam = nullptr;
-    std::atomic<float>* ratioParam = nullptr;
-    std::atomic<float>* attackParam = nullptr;
-    std::atomic<float>* makeupParam = nullptr;
-    std::atomic<float>* mixParam = nullptr;
+    static juce::AudioProcessorValueTreeState::ParameterLayout
+    createParameterLayout();
 
     double currentSampleRate = 44100.0;
-    float envelope = 0.0f;
 
-    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    float envelope = 0.0f;
+    float smoothedGainDb = 0.0f;
+
+    std::atomic<float> gainReductionDb { 0.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LaPautaSLAudioProcessor)
 };
