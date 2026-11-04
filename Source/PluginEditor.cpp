@@ -38,14 +38,14 @@ void LaPautaLookAndFeel::drawRotarySlider(
 
     const float knobRadius = radius * 0.78f;
 
-    // Sombra exterior.
+    // Sombra exterior
     g.setColour(juce::Colours::black.withAlpha(0.75f));
     g.fillEllipse(cx - knobRadius + 3.0f,
                   cy - knobRadius + 5.0f,
                   knobRadius * 2.0f,
                   knobRadius * 2.0f);
 
-    // Anillo metálico exterior.
+    // Anillo metálico
     g.setColour(juce::Colour(0xff777e82));
     g.fillEllipse(cx - knobRadius - 3.0f,
                   cy - knobRadius - 3.0f,
@@ -63,7 +63,7 @@ void LaPautaLookAndFeel::drawRotarySlider(
                   knobRadius * 2.0f,
                   knobRadius * 2.0f);
 
-    // Cara interior.
+    // Cara interior
     juce::ColourGradient face(
         juce::Colour(0xff454b4f), cx - knobRadius * 0.5f,
         cy - knobRadius,
@@ -76,17 +76,24 @@ void LaPautaLookAndFeel::drawRotarySlider(
                   knobRadius * 1.56f,
                   knobRadius * 1.56f);
 
-    // Reflejo superior.
-    g.setColour(juce::Colours::white.withAlpha(0.12f));
-    g.drawArc(cx - knobRadius * 0.72f,
-              cy - knobRadius * 0.72f,
-              knobRadius * 1.44f,
-              knobRadius * 1.44f,
-              rotaryStartAngle + 0.3f,
-              rotaryStartAngle + 1.8f,
-              true, 2.0f);
+    // Reflejo superior: corregido para JUCE
+    juce::Path reflectionArc;
 
-    // Marcas de escala.
+    reflectionArc.addArc(
+        cx - knobRadius * 0.72f,
+        cy - knobRadius * 0.72f,
+        knobRadius * 1.44f,
+        knobRadius * 1.44f,
+        rotaryStartAngle + 0.3f,
+        rotaryStartAngle + 1.8f,
+        true);
+
+    g.setColour(juce::Colours::white.withAlpha(0.12f));
+    g.strokePath(
+        reflectionArc,
+        juce::PathStrokeType(2.0f));
+
+    // Marcas de escala
     for (int i = 0; i <= 20; ++i)
     {
         const float p = i / 20.0f;
@@ -108,11 +115,11 @@ void LaPautaLookAndFeel::drawRotarySlider(
             ? juce::Colours::white.withAlpha(0.9f)
             : juce::Colours::white.withAlpha(0.35f));
 
-        g.drawLine({ p1, p2 },
+        g.drawLine(p1.x, p1.y, p2.x, p2.y,
                    i % 5 == 0 ? 2.0f : 1.0f);
     }
 
-    // Indicador blanco.
+    // Indicador blanco
     const float pointerRadius = knobRadius * 0.66f;
 
     juce::Point<float> pointer(
@@ -120,14 +127,18 @@ void LaPautaLookAndFeel::drawRotarySlider(
         cy + std::sin(angle) * pointerRadius);
 
     g.setColour(juce::Colours::black.withAlpha(0.7f));
-    g.drawLine(cx + std::cos(angle) * (pointerRadius - 1.0f),
-               cy + std::sin(angle) * (pointerRadius - 1.0f),
-               pointer.x + 1.0f, pointer.y + 2.0f, 6.0f);
+
+    g.drawLine(
+        cx + std::cos(angle) * (pointerRadius - 1.0f),
+        cy + std::sin(angle) * (pointerRadius - 1.0f),
+        pointer.x + 1.0f, pointer.y + 2.0f, 6.0f);
 
     g.setColour(juce::Colours::white);
-    g.drawLine(cx + std::cos(angle) * (pointerRadius - 1.0f),
-               cy + std::sin(angle) * (pointerRadius - 1.0f),
-               pointer.x, pointer.y, 4.0f);
+
+    g.drawLine(
+        cx + std::cos(angle) * (pointerRadius - 1.0f),
+        cy + std::sin(angle) * (pointerRadius - 1.0f),
+        pointer.x, pointer.y, 4.0f);
 }
 
 LaPautaSLEditor::LaPautaSLEditor(
@@ -176,10 +187,13 @@ void LaPautaSLEditor::setupKnob(
     const juce::String& name)
 {
     slider.setName(name);
-    slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-    slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    slider.setSliderStyle(
+        juce::Slider::RotaryHorizontalVerticalDrag);
+
+    slider.setTextBoxStyle(
+        juce::Slider::NoTextBox, false, 0, 0);
+
     slider.setLookAndFeel(&lookAndFeel);
-    slider.setDoubleClickReturnValue(true, 0.0);
     slider.setMouseDragSensitivity(180);
     slider.setPopupDisplayEnabled(true, false, this);
 }
@@ -215,17 +229,20 @@ void LaPautaSLEditor::drawMeter(
 
     g.setColour(juce::Colour(0xffb7bdc0));
     g.setFont(juce::Font(13.0f, juce::Font::bold));
+
     g.drawText("GAIN REDUCTION",
         area.getX(), area.getY() - 24.0f,
         area.getWidth(), 18.0f,
         juce::Justification::centred);
 
-    const float value = juce::jlimit(0.0f, 14.0f, displayedGR);
+    const float value = juce::jlimit(
+        0.0f, 14.0f, displayedGR);
 
     for (int i = 0; i < 14; ++i)
     {
         const float segmentHeight = 9.0f;
         const float gap = 4.0f;
+
         const float y = area.getBottom() - 12.0f
             - (i + 1) * (segmentHeight + gap);
 
@@ -244,7 +261,8 @@ void LaPautaSLEditor::drawMeter(
             ? segmentColour
             : segmentColour.withAlpha(0.13f));
 
-        const float columnWidth = (area.getWidth() - 24.0f) / 2.0f;
+        const float columnWidth =
+            (area.getWidth() - 24.0f) / 2.0f;
 
         for (int column = 0; column < 2; ++column)
         {
@@ -272,7 +290,6 @@ void LaPautaSLEditor::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    // Carcasa.
     juce::ColourGradient background(
         juce::Colour(0xff303538), 0.0f, 0.0f,
         backgroundColour, 0.0f, bounds.getBottom(),
@@ -281,31 +298,31 @@ void LaPautaSLEditor::paint(juce::Graphics& g)
     g.setGradientFill(background);
     g.fillAll();
 
-    // Textura metálica cepillada.
+    // Textura metálica
     for (int y = 0; y < getHeight(); y += 3)
     {
         g.setColour(
             juce::Colours::white.withAlpha(
                 (y % 9 == 0) ? 0.025f : 0.009f));
 
-        g.drawHorizontalLine(y, 0.0f,
-                             static_cast<float>(getWidth()));
+        g.drawHorizontalLine(
+            y, 0.0f, static_cast<float>(getWidth()));
     }
 
-    // Marco exterior.
+    // Marco
     g.setColour(juce::Colour(0xff858c90));
     g.drawRoundedRectangle(bounds.reduced(4.0f), 8.0f, 1.5f);
 
     g.setColour(juce::Colour(0xff080a0c));
     g.drawRoundedRectangle(bounds.reduced(9.0f), 6.0f, 2.0f);
 
-    // Tornillos.
+    // Tornillos
     drawScrew(g, 19.0f, 19.0f);
     drawScrew(g, 981.0f, 19.0f);
     drawScrew(g, 19.0f, 341.0f);
     drawScrew(g, 981.0f, 341.0f);
 
-    // Cabecera.
+    // Cabecera
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(25.0f, juce::Font::bold));
 
@@ -323,14 +340,14 @@ void LaPautaSLEditor::paint(juce::Graphics& g)
     g.setColour(juce::Colour(0xffa5aaad));
     g.setFont(juce::Font(11.0f, juce::Font::bold));
 
-    g.drawText("HYBRID EDITION  /  STEREO ANALOG MODEL",
+    g.drawText("HYBRID EDITION / STEREO ANALOG MODEL",
         40, 49, 420, 17,
         juce::Justification::left);
 
     g.setColour(cyanColour);
     g.fillRect(40, 72, 920, 1);
 
-    // Etiquetas y displays de parámetros.
+    // Controles
     juce::Slider* sliders[] = {
         &thresholdSlider, &ratioSlider, &attackSlider,
         &makeupSlider, &mixSlider
@@ -358,15 +375,11 @@ void LaPautaSLEditor::paint(juce::Graphics& g)
             area.getCentreX() - 48.0f,
             91.0f, 96.0f, 25.0f, 4.0f, 1.0f);
 
-        double value = sliders[i]->getValue();
+        const double value = sliders[i]->getValue();
 
         juce::String display;
 
-        if (i == 0)
-            display = juce::String(value, 1);
-        else if (i == 1)
-            display = juce::String(value, 1);
-        else if (i == 2)
+        if (i == 0 || i == 1 || i == 2)
             display = juce::String(value, 1);
         else if (i == 3)
             display = "+" + juce::String(value, 1);
@@ -390,20 +403,22 @@ void LaPautaSLEditor::paint(juce::Graphics& g)
             juce::Justification::centred);
     }
 
-    // Panel separado del medidor.
+    // Panel del medidor
     g.setColour(juce::Colour(0xff090b0d));
-    g.fillRoundedRectangle(835.0f, 87.0f, 125.0f, 230.0f, 7.0f);
+    g.fillRoundedRectangle(
+        835.0f, 87.0f, 125.0f, 230.0f, 7.0f);
 
     g.setColour(juce::Colour(0xff777e82));
-    g.drawRoundedRectangle(835.0f, 87.0f, 125.0f, 230.0f, 7.0f, 1.0f);
+    g.drawRoundedRectangle(
+        835.0f, 87.0f, 125.0f, 230.0f, 7.0f, 1.0f);
 
     drawMeter(g, { 855.0f, 130.0f, 85.0f, 145.0f });
 
-    // Identificación de edición.
+    // Identificación
     g.setColour(juce::Colour(0xff777e82));
     g.setFont(juce::Font(9.0f, juce::Font::bold));
 
-    g.drawText("LA PAUTA AUDIO  |  2026",
+    g.drawText("LA PAUTA AUDIO | 2026",
         38, 328, 300, 15,
         juce::Justification::left);
 }
