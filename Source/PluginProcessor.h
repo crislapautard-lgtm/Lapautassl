@@ -8,19 +8,12 @@ class LaPautaSLCompresorAudioProcessor
 {
 public:
     LaPautaSLCompresorAudioProcessor();
-
     ~LaPautaSLCompresorAudioProcessor() override;
 
-    void prepareToPlay(
-        double sampleRate,
-        int samplesPerBlock
-    ) override;
-
+    void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
 
-    bool isBusesLayoutSupported(
-        const BusesLayout& layouts
-    ) const override;
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
 
     void processBlock(
         juce::AudioBuffer<float>& buffer,
@@ -28,7 +21,6 @@ public:
     ) override;
 
     juce::AudioProcessorEditor* createEditor() override;
-
     bool hasEditor() const override;
 
     const juce::String getName() const override;
@@ -41,7 +33,6 @@ public:
 
     int getNumPrograms() override;
     int getCurrentProgram() override;
-
     void setCurrentProgram(int index) override;
 
     const juce::String getProgramName(int index) override;
@@ -51,9 +42,7 @@ public:
         const juce::String& newName
     ) override;
 
-    void getStateInformation(
-        juce::MemoryBlock& destData
-    ) override;
+    void getStateInformation(juce::MemoryBlock& destData) override;
 
     void setStateInformation(
         const void* data,
