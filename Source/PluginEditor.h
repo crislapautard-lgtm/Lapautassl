@@ -5,25 +5,38 @@
 #include "PluginProcessor.h"
 
 class LaPautaSLEditor : public juce::AudioProcessorEditor,
-                        private juce::Timer
+                       private juce::Timer
 {
 public:
-    explicit LaPautaSLEditor(LaPautaSLCompresorAudioProcessor& processor);
+    using Attachment =
+        juce::AudioProcessorValueTreeState::SliderAttachment;
+
+    explicit LaPautaSLEditor(
+        LaPautaSLCompresorAudioProcessor& processor);
+
     ~LaPautaSLEditor() override;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
 
 private:
-    using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-
     LaPautaSLCompresorAudioProcessor& audioProcessor;
 
-    juce::Slider thresholdSlider, ratioSlider, attackSlider,
-        releaseSlider, makeupSlider, mixSlider, hpfSlider;
+    juce::Slider thresholdSlider;
+    juce::Slider ratioSlider;
+    juce::Slider attackSlider;
+    juce::Slider releaseSlider;
+    juce::Slider makeupSlider;
+    juce::Slider mixSlider;
+    juce::Slider hpfSlider;
 
-    juce::Label thresholdLabel, ratioLabel, attackLabel,
-        releaseLabel, makeupLabel, mixLabel, hpfLabel;
+    juce::Label thresholdLabel;
+    juce::Label ratioLabel;
+    juce::Label attackLabel;
+    juce::Label releaseLabel;
+    juce::Label makeupLabel;
+    juce::Label mixLabel;
+    juce::Label hpfLabel;
 
     juce::ComboBox presetBox;
     juce::Label presetLabel;
@@ -36,9 +49,14 @@ private:
     std::unique_ptr<Attachment> mixAttachment;
     std::unique_ptr<Attachment> hpfAttachment;
 
-    void configureSlider(juce::Slider&, juce::Label&, const juce::String&);
+    void configureSlider(
+        juce::Slider& slider,
+        juce::Label& label,
+        const juce::String& parameterName);
+
     void timerCallback() override;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LaPautaSLEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
+        LaPautaSLEditor
+    )
 };
-::SliderAttachment;
