@@ -26,43 +26,39 @@ void LaPautaSLLookAndFeel::drawRotarySlider(
 
     auto bounds = juce::Rectangle<float>(
         (float)x, (float)y, (float)width, (float)height
-    ).reduced(8.0f);
+    ).reduced(7.0f);
 
-    auto diameter = juce::jmin(bounds.getWidth(), bounds.getHeight());
-    auto radius = diameter * 0.5f;
-    auto centreX = bounds.getCentreX();
-    auto centreY = bounds.getCentreY();
+    const float diameter = juce::jmin(
+        bounds.getWidth(), bounds.getHeight()
+    );
 
-    auto angle = rotaryStartAngle +
+    const float radius = diameter * 0.5f;
+    const float centreX = bounds.getCentreX();
+    const float centreY = bounds.getCentreY();
+
+    const float angle = rotaryStartAngle +
         sliderPos * (rotaryEndAngle - rotaryStartAngle);
 
-    g.setColour(juce::Colour(0xff17191a));
+    g.setColour(juce::Colour(0xff111314));
     g.fillEllipse(
-        centreX - radius,
-        centreY - radius,
-        diameter,
-        diameter
+        centreX - radius, centreY - radius,
+        diameter, diameter
     );
 
-    g.setColour(juce::Colour(0xff55585a));
+    g.setColour(juce::Colour(0xff777775));
     g.drawEllipse(
-        centreX - radius,
-        centreY - radius,
-        diameter,
-        diameter,
-        2.0f
+        centreX - radius, centreY - radius,
+        diameter, diameter, 2.0f
     );
 
-    auto innerRadius = radius * 0.78f;
+    const float innerRadius = radius * 0.78f;
 
     g.setGradientFill(
         juce::ColourGradient(
             juce::Colour(0xff55585a),
-            centreX,
-            centreY - innerRadius,
-            juce::Colour(0xff111314),
-            centreX,
-            centreY + innerRadius,
+            centreX, centreY - innerRadius,
+            juce::Colour(0xff151718),
+            centreX, centreY + innerRadius,
             false
         )
     );
@@ -74,7 +70,7 @@ void LaPautaSLLookAndFeel::drawRotarySlider(
         innerRadius * 2.0f
     );
 
-    g.setColour(juce::Colour(0xffd0d0cc));
+    g.setColour(juce::Colour(0xff99958b));
     g.drawEllipse(
         centreX - innerRadius,
         centreY - innerRadius,
@@ -84,27 +80,29 @@ void LaPautaSLLookAndFeel::drawRotarySlider(
     );
 
     juce::Path pointer;
-    auto pointerLength = radius * 0.62f;
-    auto pointerThickness = 3.0f;
+
+    const float pointerLength = radius * 0.63f;
 
     pointer.addRoundedRectangle(
-        -pointerThickness * 0.5f,
+        -1.8f,
         -pointerLength,
-        pointerThickness,
+        3.6f,
         pointerLength * 0.34f,
         1.5f
     );
 
     g.setColour(juce::Colour(0xffe3c17d));
+
     g.fillPath(
         pointer,
         juce::AffineTransform::rotation(angle)
             .translated(centreX, centreY)
     );
 
-    auto arcRadius = radius + 3.0f;
+    const float arcRadius = radius + 3.0f;
 
     juce::Path backgroundArc;
+
     backgroundArc.addCentredArc(
         centreX, centreY,
         arcRadius, arcRadius,
@@ -114,13 +112,14 @@ void LaPautaSLLookAndFeel::drawRotarySlider(
         true
     );
 
-    g.setColour(juce::Colour(0xff393c3e));
+    g.setColour(juce::Colour(0xff505253));
     g.strokePath(
         backgroundArc,
-        juce::PathStrokeType(3.0f)
+        juce::PathStrokeType(2.5f)
     );
 
     juce::Path valueArc;
+
     valueArc.addCentredArc(
         centreX, centreY,
         arcRadius, arcRadius,
@@ -133,7 +132,7 @@ void LaPautaSLLookAndFeel::drawRotarySlider(
     g.setColour(juce::Colour(0xffd2a85a));
     g.strokePath(
         valueArc,
-        juce::PathStrokeType(3.0f)
+        juce::PathStrokeType(2.5f)
     );
 }
 
@@ -175,7 +174,7 @@ LaPautaSLEditor::LaPautaSLEditor(
         std::make_unique<SliderAttachment>(
             processor.parameters, "HPF", hpfSlider);
 
-    setSize(1200, 760);
+    setSize(1000, 650);
     startTimerHz(20);
 }
 
@@ -193,161 +192,166 @@ void LaPautaSLEditor::configureSlider(
     addAndMakeVisible(slider);
     addAndMakeVisible(label);
 
-    slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    slider.setSliderStyle(
+        juce::Slider::RotaryHorizontalVerticalDrag
+    );
+
     slider.setTextBoxStyle(
         juce::Slider::TextBoxBelow,
         false,
-        90,
-        24
+        78,
+        22
     );
 
     slider.setColour(
         juce::Slider::textBoxTextColourId,
-        juce::Colour(0xffe4e0d6)
+        juce::Colour(0xffffe4ad)
     );
 
     slider.setColour(
         juce::Slider::textBoxBackgroundColourId,
-        juce::Colour(0xff202324)
+        juce::Colour(0xff17191a)
     );
 
     slider.setColour(
         juce::Slider::textBoxOutlineColourId,
-        juce::Colour(0xff55585a)
+        juce::Colour(0xff77736b)
     );
 
-    label.setText(labelText, juce::dontSendNotification);
-    label.setJustificationType(juce::Justification::centred);
+    label.setText(
+        labelText,
+        juce::dontSendNotification
+    );
+
+    label.setJustificationType(
+        juce::Justification::centred
+    );
+
     label.setColour(
         juce::Label::textColourId,
-        juce::Colour(0xff292a29)
+        juce::Colour(0xffffd68b)
     );
-    label.setFont(juce::Font(15.0f, juce::Font::bold));
+
+    label.setFont(
+        juce::Font(14.0f, juce::Font::bold)
+    );
 }
 
 void LaPautaSLEditor::paint(juce::Graphics& g)
 {
-    auto area = getLocalBounds().toFloat();
-
     g.setGradientFill(
         juce::ColourGradient(
             juce::Colour(0xffd5d2ca),
             0.0f, 0.0f,
-            juce::Colour(0xff8e918e),
+            juce::Colour(0xff92948f),
             0.0f, (float)getHeight(),
             false
         )
     );
+
     g.fillAll();
 
     g.setColour(juce::Colour(0xffe7e4dc));
-    g.drawRect(area.reduced(8.0f), 2.0f);
+    g.drawRect(getLocalBounds().reduced(7), 2);
 
     g.setColour(juce::Colour(0xff252829));
     g.fillRoundedRectangle(
-        22.0f, 20.0f,
-        1156.0f, 105.0f,
+        18.0f, 18.0f,
+        964.0f, 95.0f,
         8.0f
     );
 
     g.setColour(juce::Colour(0xffe1c18a));
-    g.setFont(juce::Font(38.0f, juce::Font::italic));
+    g.setFont(juce::Font(34.0f, juce::Font::italic));
+
     g.drawText(
         "La Pauta",
-        42, 27, 350, 55,
+        38, 25, 350, 45,
         juce::Justification::centredLeft
     );
 
     g.setColour(juce::Colour(0xffe7e5df));
-    g.setFont(juce::Font(19.0f, juce::Font::bold));
+    g.setFont(juce::Font(17.0f, juce::Font::bold));
+
     g.drawText(
         "SL COMPRESSOR",
-        45, 78, 350, 25,
+        40, 72, 350, 23,
         juce::Justification::centredLeft
     );
 
     g.setColour(juce::Colour(0xffd2a85a));
     g.fillRoundedRectangle(
-        1010.0f, 48.0f,
-        125.0f, 34.0f,
+        830.0f, 48.0f,
+        115.0f, 32.0f,
         5.0f
     );
 
     g.setColour(juce::Colour(0xff202324));
-    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    g.setFont(juce::Font(13.0f, juce::Font::bold));
+
     g.drawText(
         "STEREO",
-        1010, 48, 125, 34,
+        830, 48, 115, 32,
         juce::Justification::centred
     );
 
-    g.setColour(juce::Colour(0xff343738));
+    g.setColour(juce::Colour(0xff292d2e));
     g.fillRoundedRectangle(
-        22.0f, 150.0f,
-        1156.0f, 550.0f,
-        8.0f
-    );
-
-    g.setColour(juce::Colour(0xffc5c2b9));
-    g.drawRoundedRectangle(
-        22.0f, 150.0f,
-        1156.0f, 550.0f,
-        8.0f,
-        2.0f
-    );
-
-    g.setColour(juce::Colour(0xffd2a85a));
-    g.setFont(juce::Font(18.0f, juce::Font::bold));
-    g.drawText(
-        "COMPRESSOR SECTION",
-        50, 165, 400, 30,
-        juce::Justification::centredLeft
-    );
-
-    g.setColour(juce::Colour(0xff252829));
-    g.fillRoundedRectangle(
-        50.0f, 225.0f,
-        1100.0f, 365.0f,
+        35.0f, 135.0f,
+        930.0f, 465.0f,
         8.0f
     );
 
     g.setColour(juce::Colour(0xffb7b4ac));
     g.drawRoundedRectangle(
-        50.0f, 225.0f,
-        1100.0f, 365.0f,
-        8.0f,
-        1.5f
+        35.0f, 135.0f,
+        930.0f, 465.0f,
+        8.0f, 1.5f
     );
 
     g.setColour(juce::Colour(0xffd2a85a));
-    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    g.setFont(juce::Font(16.0f, juce::Font::bold));
+
     g.drawText(
-        "ANALOG STYLE STEREO DYNAMICS",
-        60, 610, 600, 28,
+        "COMPRESSOR SECTION",
+        55, 150, 350, 25,
         juce::Justification::centredLeft
     );
 
-    g.setColour(juce::Colour(0xff202324));
-    g.setFont(juce::Font(12.0f));
-    g.drawText(
-        "LA PAUTA AUDIO  |  VST3  |  WINDOWS 64-BIT",
-        650, 610, 480, 28,
-        juce::Justification::centredRight
+    g.setColour(juce::Colour(0xff191c1d));
+    g.fillRoundedRectangle(
+        55.0f, 210.0f,
+        890.0f, 330.0f,
+        8.0f
+    );
+
+    g.setColour(juce::Colour(0xff77736b));
+    g.drawRoundedRectangle(
+        55.0f, 210.0f,
+        890.0f, 330.0f,
+        8.0f, 1.0f
     );
 
     g.setColour(juce::Colour(0xffd2a85a));
-    g.fillRect(50, 650, 1100, 2);
+    g.setFont(juce::Font(12.0f, juce::Font::bold));
+
+    g.drawText(
+        "LA PAUTA AUDIO  |  STEREO DYNAMICS  |  VST3",
+        55, 565, 890, 20,
+        juce::Justification::centred
+    );
 }
 
 void LaPautaSLEditor::resized()
 {
-    const int knobWidth = 150;
-    const int knobHeight = 170;
-    const int labelHeight = 30;
-    const int y = 300;
+    const int knobWidth = 130;
+    const int knobHeight = 155;
+
+    const int labelWidth = 140;
+    const int labelHeight = 28;
 
     const int positions[] = {
-        90, 270, 450, 630, 810, 990
+        75, 225, 375, 525, 675, 825
     };
 
     juce::Slider* sliders[] = {
@@ -370,18 +374,18 @@ void LaPautaSLEditor::resized()
 
     for (int i = 0; i < 6; ++i)
     {
-        sliders[i]->setBounds(
-            positions[i],
-            y,
-            knobWidth,
-            knobHeight
-        );
-
         labels[i]->setBounds(
             positions[i],
-            y - labelHeight - 8,
-            knobWidth,
+            255,
+            labelWidth,
             labelHeight
+        );
+
+        sliders[i]->setBounds(
+            positions[i] + 5,
+            295,
+            knobWidth,
+            knobHeight
         );
     }
 }
